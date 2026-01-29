@@ -25,7 +25,10 @@ const features = [
 
 export default function TodoLoQueNecesitas() {
   return (
-    <section className="flex py-20 px-36 justify-center items-center gap-7 self-stretch">
+    <section
+      className="flex py-20 px-36 justify-center items-center gap-7 self-stretch bg-[#F8FAFC] scroll-mt-20"
+      id="plataforma"
+    >
       <div className="flex flex-col justify-center items-center gap-7">
         <div className="flex flex-col items-center gap-5 self-stretch">
           <h2 className="font-barlow font-bold text-5xl text-secondary">

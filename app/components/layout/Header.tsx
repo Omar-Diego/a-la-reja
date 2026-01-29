@@ -1,3 +1,4 @@
+import Link from "next/link";
 import Button from "../ui/button";
 
 export default function Header() {
@@ -14,15 +15,15 @@ export default function Header() {
         </div>
         <div>
           <nav className="flex gap-10 justify-center items-center text-white text-[1.25rem] font-semibold leading-normal font-barlow">
-            <a href="#" className="hover:text-primary transition-colors">
+            <Link href="/" className="hover:text-primary transition-colors">
               Inicio
-            </a>
-            <a href="#" className="hover:text-primary transition-colors">
-              Reservar
-            </a>
-            <a href="#" className="hover:text-primary transition-colors">
-              Canchas
-            </a>
+            </Link>
+            <Link
+              href="#plataforma"
+              className="hover:text-primary transition-colors"
+            >
+              Plataforma
+            </Link>
           </nav>
         </div>
       </div>
