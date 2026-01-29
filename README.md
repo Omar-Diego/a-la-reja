@@ -5,6 +5,7 @@ API REST para la gestión de reservas de canchas de pádel. Permite a los usuari
 ## Descripción
 
 Esta API proporciona endpoints para:
+
 - Autenticación de usuarios (registro e inicio de sesión)
 - Gestión de canchas disponibles
 - Creación, consulta, modificación y cancelación de reservaciones
@@ -21,16 +22,16 @@ Esta API proporciona endpoints para:
 
 ## Tecnologías Usadas
 
-| Tecnología | Propósito |
-|------------|-----------|
-| [Node.js](https://nodejs.org/) | Entorno de ejecución JavaScript |
-| [Express](https://expressjs.com/) | Framework web para API REST |
-| [MySQL](https://www.mysql.com/) | Base de datos relacional |
-| [MySQL2](https://www.npmjs.com/package/mysql2) | Driver de MySQL para Node.js |
-| [JWT](https://jwt.io/) | Autenticación basada en tokens |
-| [bcryptjs](https://www.npmjs.com/package/bcryptjs) | Encriptación de contraseñas |
-| [dotenv](https://www.npmjs.com/package/dotenv) | Variables de entorno |
-| [cors](https://www.npmjs.com/package/cors) | Manejo de CORS |
+| Tecnología                                         | Propósito                       |
+| -------------------------------------------------- | ------------------------------- |
+| [Node.js](https://nodejs.org/)                     | Entorno de ejecución JavaScript |
+| [Express](https://expressjs.com/)                  | Framework web para API REST     |
+| [MySQL](https://www.mysql.com/)                    | Base de datos relacional        |
+| [MySQL2](https://www.npmjs.com/package/mysql2)     | Driver de MySQL para Node.js    |
+| [JWT](https://jwt.io/)                             | Autenticación basada en tokens  |
+| [bcryptjs](https://www.npmjs.com/package/bcryptjs) | Encriptación de contraseñas     |
+| [dotenv](https://www.npmjs.com/package/dotenv)     | Variables de entorno            |
+| [cors](https://www.npmjs.com/package/cors)         | Manejo de CORS                  |
 
 ## Estructura del Proyecto
 
@@ -54,31 +55,31 @@ proyecto/
 
 ### Archivos del Raíz
 
-| Archivo | Descripción |
-|---------|-------------|
-| `.env` | Archivo de configuración con variables de entorno (DB_HOST, DB_USER, DB_PASSWORD, DB_NAME, DB_PORT, JWT_SECRET) |
-| `.gitignore` | Define qué archivos/directorios ignorar en Git |
-| `index.js` | Archivo principal que configura Express y carga las rutas |
-| `package.json` | Metadatos del proyecto y lista de dependencias |
+| Archivo        | Descripción                                                                                                     |
+| -------------- | --------------------------------------------------------------------------------------------------------------- |
+| `.env`         | Archivo de configuración con variables de entorno (DB_HOST, DB_USER, DB_PASSWORD, DB_NAME, DB_PORT, JWT_SECRET) |
+| `.gitignore`   | Define qué archivos/directorios ignorar en Git                                                                  |
+| `index.js`     | Archivo principal que configura Express y carga las rutas                                                       |
+| `package.json` | Metadatos del proyecto y lista de dependencias                                                                  |
 
 ### Directorio `config/`
 
-| Archivo | Descripción |
-|---------|-------------|
+| Archivo | Descripción                                        |
+| ------- | -------------------------------------------------- |
 | `db.js` | Configuración de la conexión a MySQL usando mysql2 |
 
 ### Directorio `middlewares/`
 
-| Archivo | Descripción |
-|---------|-------------|
+| Archivo   | Descripción                                                      |
+| --------- | ---------------------------------------------------------------- |
 | `auth.js` | Middleware que verifica tokens JWT en las solicitudes protegidas |
 
 ### Directorio `routes/`
 
-| Archivo | Descripción |
-|---------|-------------|
-| `usuarios.js` | Endpoints para registro de usuarios y login |
-| `canchas.js` | Endpoints para consultar canchas disponibles |
+| Archivo            | Descripción                                  |
+| ------------------ | -------------------------------------------- |
+| `usuarios.js`      | Endpoints para registro de usuarios y login  |
+| `canchas.js`       | Endpoints para consultar canchas disponibles |
 | `reservaciones.js` | Endpoints CRUD para gestión de reservaciones |
 
 ## Prerrequisitos
@@ -165,14 +166,15 @@ El servidor se iniciará en el puerto **3000**.
 
 ### 🔐 Autenticación
 
-| Método | Endpoint | Descripción | Requiere Token |
-|--------|----------|-------------|----------------|
-| POST | `/api/login` | Iniciar sesión | No |
-| POST | `/api/usuarios` | Registrar nuevo usuario | No |
+| Método | Endpoint        | Descripción             | Requiere Token |
+| ------ | --------------- | ----------------------- | -------------- |
+| POST   | `/api/login`    | Iniciar sesión          | No             |
+| POST   | `/api/usuarios` | Registrar nuevo usuario | No             |
 
 #### POST `/api/login`
 
 **Body:**
+
 ```json
 {
   "email": "usuario@email.com",
@@ -181,6 +183,7 @@ El servidor se iniciará en el puerto **3000**.
 ```
 
 **Respuesta:**
+
 ```json
 {
   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
@@ -190,6 +193,7 @@ El servidor se iniciará en el puerto **3000**.
 #### POST `/api/usuarios`
 
 **Body:**
+
 ```json
 {
   "nombre": "Juan Pérez",
@@ -199,6 +203,7 @@ El servidor se iniciará en el puerto **3000**.
 ```
 
 **Respuesta:**
+
 ```json
 {
   "message": "Usuario creado",
@@ -210,24 +215,25 @@ El servidor se iniciará en el puerto **3000**.
 
 ### 🏟️ Canchas
 
-| Método | Endpoint | Descripción | Requiere Token |
-|--------|----------|-------------|----------------|
-| GET | `/api/canchas` | Listar todas las canchas | No |
+| Método | Endpoint       | Descripción              | Requiere Token |
+| ------ | -------------- | ------------------------ | -------------- |
+| GET    | `/api/canchas` | Listar todas las canchas | No             |
 
 #### GET `/api/canchas`
 
 **Respuesta:**
+
 ```json
 [
   {
     "nombre": "Cancha 1",
     "ubicacion": "Calle Principal 123",
-    "precio_por_hora": 50.00
+    "precio_por_hora": 50.0
   },
   {
     "nombre": "Cancha 2",
     "ubicacion": "Avenida Central 456",
-    "precio_por_hora": 60.00
+    "precio_por_hora": 60.0
   }
 ]
 ```
@@ -236,18 +242,19 @@ El servidor se iniciará en el puerto **3000**.
 
 ### 📅 Reservaciones
 
-| Método | Endpoint | Descripción | Requiere Token |
-|--------|----------|-------------|----------------|
-| POST | `/api/reservaciones` | Crear nueva reservación | Sí |
-| GET | `/api/reservaciones` | Listar todas las reservaciones | No |
-| GET | `/api/reservaciones?fecha=YYYY-MM-DD&canchaId=1` | Ver disponibilidad | No |
-| GET | `/api/reservaciones/usuario` | Mis reservaciones | Sí |
-| PUT | `/api/reservaciones/:idReservacion` | Editar reservación | Sí |
-| DELETE | `/api/reservaciones/:idReservacion` | Cancelar reservación | Sí |
+| Método | Endpoint                                         | Descripción                    | Requiere Token |
+| ------ | ------------------------------------------------ | ------------------------------ | -------------- |
+| POST   | `/api/reservaciones`                             | Crear nueva reservación        | Sí             |
+| GET    | `/api/reservaciones`                             | Listar todas las reservaciones | No             |
+| GET    | `/api/reservaciones?fecha=YYYY-MM-DD&canchaId=1` | Ver disponibilidad             | No             |
+| GET    | `/api/reservaciones/usuario`                     | Mis reservaciones              | Sí             |
+| PUT    | `/api/reservaciones/:idReservacion`              | Editar reservación             | Sí             |
+| DELETE | `/api/reservaciones/:idReservacion`              | Cancelar reservación           | Sí             |
 
 #### POST `/api/reservaciones`
 
 **Body:**
+
 ```json
 {
   "fecha": "2026-02-15",
@@ -258,11 +265,13 @@ El servidor se iniciará en el puerto **3000**.
 ```
 
 **Encabezados:**
+
 ```
 Authorization: Bearer <token>
 ```
 
 **Respuesta:**
+
 ```json
 {
   "message": "Reservación creada",
@@ -275,6 +284,7 @@ Authorization: Bearer <token>
 Consulta la disponibilidad de una cancha en una fecha específica.
 
 **Respuesta:**
+
 ```json
 [
   {
@@ -288,6 +298,7 @@ Consulta la disponibilidad de una cancha en una fecha específica.
 #### PUT `/api/reservaciones/:idReservacion`
 
 **Body:**
+
 ```json
 {
   "fecha": "2026-02-16",
@@ -298,6 +309,7 @@ Consulta la disponibilidad de una cancha en una fecha específica.
 ```
 
 **Encabezados:**
+
 ```
 Authorization: Bearer <token>
 ```
@@ -305,6 +317,7 @@ Authorization: Bearer <token>
 #### DELETE `/api/reservaciones/:idReservacion`
 
 **Encabezados:**
+
 ```
 Authorization: Bearer <token>
 ```
@@ -328,3 +341,5 @@ Omar Sebastian Diego Cortes
 Paola Fuentes Bustamante
 
 Fernando David Rodriguez Ortega
+
+---
