@@ -324,5 +324,7 @@ ISC
 ## Autores
 
 Omar Sebastian Diego Cortes
+
 Paola Fuentes Bustamante
+
 Fernando David Rodriguez Ortega
