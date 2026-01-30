@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Barlow_Condensed, Roboto } from "next/font/google";
 import "./globals.css";
+import SessionProvider from "./components/providers/SessionProvider";
 
 const barlowCondensed = Barlow_Condensed({
   subsets: ["latin"],
@@ -37,7 +38,9 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap"
         />
       </head>
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        <SessionProvider>{children}</SessionProvider>
+      </body>
     </html>
   );
 }

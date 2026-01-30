@@ -1,111 +1,181 @@
-// Rutas de Gestión de Usuarios
+/**
+ * Rutas de Gestion de Usuarios
+ *
+ * Este módulo maneja autenticación y registro de usuarios.
+ * Características:
+ * - Registro de usuario con hash de contraseñas
+ * - Login de usuario con generación de token JWT
+ * - Consultas de base de datos async/await con pool de conexiones
+ * - Manejo de errores seguro
+ */
 
-// Importa el framework Express
+// Importar framework Express
 const express = require("express");
 
-// Crea un enrutador para definir las rutas
+// Crear router para definir rutas
 const router = express.Router();
 
-// Importa la configuración de la base de datos
-const db = require("../config/db");
+// Importar el pool de conexiones de base de datos
+const { pool } = require("../config/db");
 
-// Importa bcryptjs para encriptar contraseñas
+// Importar bcryptjs para hash de contraseñas
 const bcrypt = require("bcryptjs");
 
-// Importa jsonwebtoken para crear tokens de autenticación
+// Importar jsonwebtoken para tokens de autenticación
 const jwt = require("jsonwebtoken");
 
-// POST /api/login
+// Importar manejador asíncrono para manejo de errores
+const { asyncHandler } = require("../middlewares/dbErrorHandler");
 
 /**
- * Inicia sesión de usuario y devuelve un token JWT
- * 
+ * POST /api/login
+ *
+ * Autentica a un usuario y retorna un token JWT
+ *
  * @route POST /api/login
- * @param {string} email - Correo electrónico del usuario
+ * @param {string} email - Dirección de email del usuario
  * @param {string} password - Contraseña del usuario
  * @returns {Object} Token JWT si las credenciales son válidas
+ *
+ * Consideraciones de seguridad:
+ * - Usa consultas parametrizadas para prevenir inyección SQL
+ * - Compara contraseñas usando bcrypt (resistente a timing attacks)
+ * - Retorna mensajes de error genéricos (no revela si el email existe)
+ * - El token JWT tiene tiempo de expiración
  */
-router.post("/login", (req, res) => {
-  // Extrae email y password del cuerpo de la solicitud
-  const { email, password } = req.body;
+router.post(
+  "/login",
+  asyncHandler(async (req, res) => {
+    // Extraer email y contraseña del cuerpo de la petición
+    const { email, password } = req.body;
 
-  // Consulta SQL para buscar usuario por email
-  const sql = "SELECT * FROM usuarios WHERE email = ?";
-
-  // Ejecuta la consulta con el email proporcionado
-  db.query(sql, [email], async (error, results) => {
-    // Si hay un error en la consulta, responde con error 500
-    if (error) {
-      return res.status(500).json({ error: "Error del servidor" });
+    // Validar entrada
+    if (!email || !password) {
+      return res.status(400).json({
+        error: "Email y contrasena son requeridos",
+      });
     }
 
-    // Verifica si se encontró un usuario con ese email
+    // Consulta SQL para encontrar usuario por email
+    // Usa consulta parametrizada para prevenir inyección SQL
+    const sql = "SELECT * FROM USUARIOS WHERE email = ?";
+
+    // Ejecutar consulta usando pool de conexiones
+    const [results] = await pool.query(sql, [email]);
+
+    // Verificar si se encontró el usuario
     if (results.length === 0) {
-      return res.status(401).json({ error: "Usuario no encontrado" });
+      // SEGURIDAD: Usar mismo mensaje de error que contraseña inválida
+      // para prevenir ataques de enumeración de usuarios
+      return res.status(401).json({
+        error: "Credenciales invalidas",
+      });
     }
 
-    // Obtiene el primer resultado (el usuario encontrado)
+    // Obtener el usuario de los resultados
     const usuario = results[0];
 
-    // Compara la contraseña proporcionada con la encriptada en la base de datos
+    // Comparar contraseña proporcionada con contraseña hasheada en base de datos
+    // bcrypt.compare es resistente a timing attacks
     const passwordValido = await bcrypt.compare(password, usuario.password);
 
-    // Si la contraseña no coincide, responde con error 401
+    // Si la contraseña no coincide, retornar error
     if (!passwordValido) {
-      return res.status(401).json({ error: "Contraseña incorrecta" });
+      return res.status(401).json({
+        error: "Credenciales invalidas",
+      });
     }
 
-    // Generación del Token JWT
-    // Crea un token JWT con el ID del usuario
-    // El token expira en 1 hora (1h)
+    // Generar token JWT
+    // El token contiene ID de usuario y nombre, expira en 1 hora
     const token = jwt.sign(
-      { idUsuario: usuario.idUsuario },
+      {
+        idUsuario: usuario.idUsuario,
+        nombre: usuario.nombre,
+        email: usuario.email,
+      },
       process.env.JWT_SECRET,
-      { expiresIn: "1h" }
+      { expiresIn: "1h" },
     );
 
-    // Responde con el token generado
-    res.json({ token });
-  });
-});
+    // Retornar token e información del usuario al cliente
+    res.json({
+      token,
+      user: {
+        id: usuario.idUsuario,
+        nombre: usuario.nombre,
+        email: usuario.email,
+      },
+    });
+  }),
+);
 
-// POST /api/usuarios
 /**
+ * POST /api/usuarios
+ *
  * Registra un nuevo usuario en el sistema
- * 
+ *
  * @route POST /api/usuarios
  * @param {string} nombre - Nombre del usuario
- * @param {string} email - Correo electrónico del usuario
+ * @param {string} email - Dirección de email del usuario
  * @param {string} password - Contraseña del usuario
- * @returns {Object} Mensaje de éxito y ID del nuevo usuario
+ * @returns {Object} Mensaje de éxito e ID del nuevo usuario
+ *
+ * Consideraciones de seguridad:
+ * - Contraseñas hasheadas con bcrypt (10 rondas)
+ * - Usa consultas parametrizadas para prevenir inyección SQL
+ * - Valida campos requeridos
+ * - Maneja email duplicado de forma elegante
  */
-router.post("/usuarios", async (req, res) => {
-  // Extrae los datos del cuerpo de la solicitud
-  const { nombre, email, password } = req.body;
+router.post(
+  "/USUARIOS",
+  asyncHandler(async (req, res) => {
+    // Extraer datos del usuario del cuerpo de la petición
+    const { nombre, email, password } = req.body;
 
-  // Encripta la contraseña usando bcrypt con 10 rounds de sal
-  const hashedPassword = await bcrypt.hash(password, 10);
+    // Validar campos requeridos
+    if (!nombre || !email || !password) {
+      return res.status(400).json({
+        error: "Nombre, email y contrasena son requeridos",
+      });
+    }
 
-  // Consulta SQL para insertar un nuevo usuario
-  const sql = `
-    INSERT INTO usuarios (nombre, email, password)
+    // Validar formato de email (validación básica)
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        error: "Formato de email invalido",
+      });
+    }
+
+    // Validar longitud de contraseña
+    if (password.length < 6) {
+      return res.status(400).json({
+        error: "La contrasena debe tener al menos 6 caracteres",
+      });
+    }
+
+    // Hashear contraseña usando bcrypt con 10 rondas de salt
+    // Más rondas = más seguro pero más lento
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Consulta SQL para insertar nuevo usuario
+    // Usa consulta parametrizada para prevenir inyección SQL
+    const sql = `
+    INSERT INTO USUARIOS (nombre, email, password)
     VALUES (?, ?, ?)
   `;
 
-  // Ejecuta la consulta con los datos del usuario
-  db.query(sql, [nombre, email, hashedPassword], (error, result) => {
-    // Si hay un error en la consulta, responde con error 500
-    if (error) {
-      return res.status(500).json({ error: "Error al crear usuario" });
-    }
+    // Ejecutar consulta usando pool de conexiones
+    const [result] = await pool.query(sql, [nombre, email, hashedPassword]);
 
-    // Responde con éxito, incluyendo el ID del nuevo usuario
+    // Retornar respuesta de éxito con ID del nuevo usuario
     res.status(201).json({
-      message: "Usuario creado",
-      id: result.insertId
+      message: "Usuario creado exitosamente",
+      id: result.insertId,
     });
-  });
-});
+  }),
+);
 
-// Exporta el enrutador para ser utilizado en index.js
+// Exportar router para usar en index.js
 module.exports = router;

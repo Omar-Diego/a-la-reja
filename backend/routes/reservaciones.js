@@ -1,120 +1,190 @@
-// Rutas de Gestión de Reservaciones
+/**
+ * Rutas de Gestion de Reservaciones
+ *
+ * Este módulo maneja operaciones CRUD de reservaciones.
+ * Características:
+ * - Crear, leer, actualizar y eliminar reservaciones
+ * - Validación de disponibilidad para prevenir doble reserva
+ * - Autenticación JWT para rutas protegidas
+ * - Consultas de base de datos async/await con pool de conexiones
+ * - Manejo de errores seguro
+ */
 
-// Mensaje para que saber si cargaron las rutas
-console.log("Rutas de reservacion cargadas")
+// Registrar carga del módulo (depuración en desarrollo)
+console.log("[Routes] Reservaciones routes loaded");
 
-// Importa express
+// Importar framework Express
 const express = require("express");
 
-// Crea el router
+// Crear router para definir rutas
 const router = express.Router();
 
-// Importa la configuración de la base de datos
-const db = require("../config/db");
+// Importar el pool de conexiones de base de datos
+const { pool } = require("../config/db");
 
-// Importa el middleware de autenticación JWT
+// Importar middleware de autenticación JWT
 const auth = require("../middlewares/auth");
 
-// POST /api/reservaciones
+// Importar manejador asíncrono para manejo de errores
+const { asyncHandler } = require("../middlewares/dbErrorHandler");
+
 /**
+ * POST /api/reservaciones
+ *
  * Crea una nueva reservación de cancha
- * Requiere autenticación (token JWT válido)
- * Valida que no haya conflictos de horarios
+ *
+ * @route POST /api/reservaciones
  * @header Authorization: Bearer <token>
- * @param {string} fecha - Fecha de la reservación (YYYY-MM-DD)
+ * @param {string} fecha - Fecha de reservación (YYYY-MM-DD)
  * @param {string} hora_inicio - Hora de inicio (HH:MM:SS)
  * @param {string} hora_fin - Hora de fin (HH:MM:SS)
- * @param {number} idCancha - ID de la cancha a reservar
- * @returns {Object} Mensaje de éxito y ID de la reservación
+ * @param {number} idCancha - ID de cancha a reservar
+ * @returns {Object} Mensaje de éxito e ID de reservación
+ *
+ * Consideraciones de seguridad:
+ * - Requiere autenticación JWT
+ * - Usa consultas parametrizadas para prevenir inyección SQL
+ * - Valida disponibilidad antes de crear reservación
+ * - Solo usa ID de usuario autenticado (del token, no de la petición)
  */
-router.post("/reservaciones", auth, (req, res) => {
-  // Extrae los datos del cuerpo de la solicitud
-  const {
-    fecha,
-    hora_inicio,
-    hora_fin,
-    idCancha
-  } = req.body;
+router.post(
+  "/reservaciones",
+  auth,
+  asyncHandler(async (req, res) => {
+    // Extraer datos de reservación del cuerpo de la petición
+    const { fecha, hora_inicio, hora_fin, idCancha } = req.body;
 
-  // Obtiene el ID del usuario autenticado desde el middleware auth
-  // El middleware auth decodifica el token y guarda la información en req.usuario
-  const idUsuario = req.usuario.idUsuario;
+    // Obtener ID de usuario autenticado del token JWT (establecido por middleware auth)
+    const idUsuario = req.usuario.idUsuario;
 
-  // Validación de Disponibilidad
-  // Consulta SQL para verificar si ya existe una reservación
-  // en el mismo horario para la misma cancha y fecha
-  const validarSql = `
-    SELECT * FROM RESERVACIONES
+    // Validar campos requeridos
+    if (!fecha || !hora_inicio || !hora_fin || !idCancha) {
+      return res.status(400).json({
+        error: "Fecha, hora_inicio, hora_fin e idCancha son requeridos",
+      });
+    }
+
+    // Validar formato de fecha (validación básica)
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(fecha)) {
+      return res.status(400).json({
+        error: "Formato de fecha invalido. Use YYYY-MM-DD",
+      });
+    }
+
+    // Validar formato de hora (validación básica)
+    const timeRegex = /^\d{2}:\d{2}(:\d{2})?$/;
+    if (!timeRegex.test(hora_inicio) || !timeRegex.test(hora_fin)) {
+      return res.status(400).json({
+        error: "Formato de hora invalido. Use HH:MM o HH:MM:SS",
+      });
+    }
+
+    // Validar que la hora de fin sea posterior a la hora de inicio
+    if (hora_inicio >= hora_fin) {
+      return res.status(400).json({
+        error: "La hora de fin debe ser posterior a la hora de inicio",
+      });
+    }
+
+    // Consulta de validación de disponibilidad
+    // Verificar si hay alguna reservación que se superponga
+    const validarSql = `
+    SELECT idReservacion FROM RESERVACIONES
     WHERE fecha = ?
     AND CANCHAS_idCancha = ?
     AND (
       hora_inicio < ?
       AND hora_fin > ?
     )
+    LIMIT 1
   `;
 
-  // Ejecuta la consulta de validación
-  db.query(
-    validarSql,
-    [fecha, idCancha, hora_fin, hora_inicio],
-    (error, resultados) => {
-      // Si hay un error en la consulta, responde con error 500
-      if (error) {
-        return res.status(500).json({ error: "Error al validar disponibilidad" });
-      }
+    // Ejecutar verificación de disponibilidad
+    const [existentes] = await pool.query(validarSql, [
+      fecha,
+      idCancha,
+      hora_fin,
+      hora_inicio,
+    ]);
 
-      // Si hay resultados, significa que ya existe una reservación en ese horario
-      if (resultados.length > 0) {
-        return res.status(409).json({
-          error: "La cancha ya está reservada en ese horario"
+    // Si existe una reservación que se superpone, retornar error de conflicto
+    if (existentes.length > 0) {
+      return res.status(409).json({
+        error: "La cancha ya esta reservada en ese horario",
+      });
+    }
+
+    // Insertar nueva reservación
+    const insertSql = `
+    INSERT INTO RESERVACIONES
+    (fecha, hora_inicio, hora_fin, USUARIOS_idUsuario, CANCHAS_idCancha)
+    VALUES (?, ?, ?, ?, ?)
+  `;
+
+    // Ejecutar consulta de inserción
+    const [result] = await pool.query(insertSql, [
+      fecha,
+      hora_inicio,
+      hora_fin,
+      idUsuario,
+      idCancha,
+    ]);
+
+    // Retornar respuesta de éxito
+    res.status(201).json({
+      message: "Reservacion creada exitosamente",
+      idReservacion: result.insertId,
+    });
+  }),
+);
+
+/**
+ * GET /api/reservaciones
+ *
+ * Obtiene todas las reservaciones del sistema
+ *
+ * @route GET /api/reservaciones
+ * @query {string} fecha - Filtrar por fecha (opcional)
+ * @query {number} canchaId - Filtrar por ID de cancha (opcional)
+ * @returns {Array} Lista de reservaciones con información de usuario y cancha
+ *
+ * Consideraciones de seguridad:
+ * - Usa consultas parametrizadas
+ * - No expone datos sensibles de usuario
+ * - Endpoint público (no requiere autenticación)
+ */
+router.get(
+  "/reservaciones",
+  asyncHandler(async (req, res) => {
+    // Verificar si se filtra por fecha y cancha
+    const { fecha, canchaId } = req.query;
+
+    // Si se proporcionan ambos filtros, retornar resultados filtrados
+    if (fecha && canchaId) {
+      // Validar que canchaId sea un número
+      const courtId = parseInt(canchaId, 10);
+      if (isNaN(courtId) || courtId <= 0) {
+        return res.status(400).json({
+          error: "ID de cancha invalido",
         });
       }
 
-      // Inserción de la Reservación
+      // Consulta SQL para reservaciones filtradas
+      const sql = `
+      SELECT idReservacion, hora_inicio, hora_fin
+      FROM RESERVACIONES
+      WHERE fecha = ?
+      AND CANCHAS_idCancha = ?
+      ORDER BY hora_inicio
+    `;
 
-      // Consulta SQL para insertar una nueva reservación
-      const insertSql = `
-        INSERT INTO RESERVACIONES
-        (fecha, hora_inicio, hora_fin, USUARIOS_idUsuario, CANCHAS_idCancha)
-        VALUES (?, ?, ?, ?, ?)
-      `;
-
-      // Ejecuta la consulta de inserción
-      db.query(
-        insertSql,
-        [fecha, hora_inicio, hora_fin, idUsuario, idCancha],
-        (error, result) => {
-          // Si hay un error en la consulta, responde con error 500
-          if (error) {
-            console.error(error);
-            return res.status(500).json({
-              error: "Error al crear reservación",
-              detalle: error.sqlMessage
-            });
-          }
-
-          // Responde con éxito, incluyendo el ID de la nueva reservación
-          res.status(201).json({
-            message: "Reservación creada",
-            idReservacion: result.insertId
-          });
-        }
-      );
+      const [resultados] = await pool.query(sql, [fecha, courtId]);
+      return res.json(resultados);
     }
-  );
-});
 
-// GET /api/reservaciones (Todas las reservaciones)
-/**
- * Obtiene todas las reservaciones del sistema
- * Incluye información del usuario y la cancha
- * No requiere autenticación
- * @returns {Array} Lista de todas las reservaciones
- */
-router.get("/reservaciones", (req, res) => {
-  // Consulta SQL para obtener todas las reservaciones
-  // Usa JOINs para incluir información del usuario y la cancha
-  const sql = `
+    // Si no hay filtros, retornar todas las reservaciones con detalles
+    const sql = `
     SELECT r.idReservacion, r.fecha, r.hora_inicio, r.hora_fin,
            u.nombre AS usuario,
            c.nombre AS cancha
@@ -124,173 +194,237 @@ router.get("/reservaciones", (req, res) => {
     ORDER BY r.fecha, r.hora_inicio
   `;
 
-  // Ejecuta la consulta
-  db.query(sql, (error, resultados) => {
-    // Si hay un error, responde con error 500
-    if (error) {
-      return res.status(500).json({ error: "Error al obtener reservaciones" });
-    }
-
-    // Responde con la lista de reservaciones
+    const [resultados] = await pool.query(sql);
     res.json(resultados);
-  });
-});
+  }),
+);
 
-// GET /api/reservaciones/usuario
-//Obtiene las reservaciones del usuario autenticado
-//Requiere autenticación (token JWT válido)
+/**
+ * GET /api/reservaciones/usuario
+ *
+ * Obtiene las reservaciones del usuario autenticado
+ *
+ * @route GET /api/reservaciones/usuario
+ * @header Authorization: Bearer <token>
+ * @returns {Array} Lista de reservaciones del usuario
+ *
+ * Consideraciones de seguridad:
+ * - Requiere autenticación JWT
+ * - Usa ID de usuario del token (no de la petición)
+ * - Solo retorna las reservaciones propias del usuario
+ */
+router.get(
+  "/reservaciones/usuario",
+  auth,
+  asyncHandler(async (req, res) => {
+    // Obtener ID de usuario autenticado del token JWT
+    const idUsuario = req.usuario.idUsuario;
 
-router.get("/reservaciones/usuario", auth, (req, res) => {
-  // Obtiene el ID del usuario autenticado
-  const { idUsuario } = req.usuario.idUsuario;
-
-  // Consulta SQL para obtener reservaciones del usuario
-  const sql = `
+    // Consulta SQL para obtener reservaciones del usuario
+    const sql = `
     SELECT r.idReservacion, r.fecha, r.hora_inicio, r.hora_fin,
-           c.nombre AS cancha
+           c.nombre AS cancha, c.ubicacion
     FROM RESERVACIONES r
     JOIN CANCHAS c ON r.CANCHAS_idCancha = c.idCancha
     WHERE r.USUARIOS_idUsuario = ?
     ORDER BY r.fecha, r.hora_inicio
   `;
 
-  // Ejecuta la consulta con el ID del usuario
-  db.query(sql, [idUsuario], (error, resultados) => {
-    // Si hay un error, responde con error 500
-    if (error) {
-      return res.status(500).json({ error: "Error al obtener reservaciones" });
-    }
-
-    // Responde con la lista de reservaciones del usuario
+    const [resultados] = await pool.query(sql, [idUsuario]);
     res.json(resultados);
-  });
-});
+  }),
+);
 
-// GET /api/reservaciones (Con filtros de fecha y cancha)
 /**
- * Obtiene las reservaciones de una cancha específica en una fecha específica
- * Es util para consultar disponibilidad
- * No requiere autenticación
- * @param {string} fecha - Fecha a consultar (YYYY-MM-DD)
- * @param {number} canchaId - ID de la cancha
- * @returns {Array} Lista de horarios reservados
+ * GET /api/reservaciones/:idReservacion
+ *
+ * Obtiene una reservación específica por ID
+ *
+ * @route GET /api/reservaciones/:idReservacion
+ * @param {number} idReservacion - ID de reservación
+ * @returns {Object} Detalles de la reservación
+ *
+ * Consideraciones de seguridad:
+ * - Usa consultas parametrizadas
+ * - Valida que el ID sea un número
  */
-router.get("/reservaciones", (req, res) => {
-  // Extrae los parámetros de consulta (query params)
-  const { fecha, canchaId } = req.query;
+router.get(
+  "/reservaciones/:idReservacion",
+  asyncHandler(async (req, res) => {
+    // Extraer y validar ID de reservación
+    const { idReservacion } = req.params;
 
-  // Valida que se proporcionen ambos parámetros
-  if (!fecha || !canchaId) {
-    return res.status(400).json({
-      error: "Fecha y canchaId son requeridos"
-    });
-  }
-
-  // Consulta SQL para obtener reservaciones filtradas
-  const sql = `
-    SELECT idReservacion, hora_inicio, hora_fin
-    FROM RESERVACIONES
-    WHERE fecha = ?
-    AND CANCHAS_idCancha = ?
-    ORDER BY hora_inicio
-  `;
-
-  // Ejecuta la consulta con los filtros
-  db.query(sql, [fecha, canchaId], (error, resultados) => {
-    // Si hay un error, responde con error 500
-    if (error) {
-      return res.status(500).json({
-        error: "Error al obtener reservaciones"
+    const id = parseInt(idReservacion, 10);
+    if (isNaN(id) || id <= 0) {
+      return res.status(400).json({
+        error: "ID de reservacion invalido",
       });
     }
 
-    // Responde con la lista de horarios reservados
-    res.json(resultados);
-  });
-});
+    // Consulta SQL para obtener detalles de reservación
+    const sql = `
+    SELECT r.idReservacion, r.fecha, r.hora_inicio, r.hora_fin,
+           u.nombre AS usuario,
+           c.nombre AS cancha, c.ubicacion, c.precio_por_hora
+    FROM RESERVACIONES r
+    JOIN USUARIOS u ON r.USUARIOS_idUsuario = u.idUsuario
+    JOIN CANCHAS c ON r.CANCHAS_idCancha = c.idCancha
+    WHERE r.idReservacion = ?
+  `;
 
-// DELETE /api/reservaciones/:idReservacion
+    const [resultados] = await pool.query(sql, [id]);
+
+    if (resultados.length === 0) {
+      return res.status(404).json({
+        error: "Reservacion no encontrada",
+      });
+    }
+
+    res.json(resultados[0]);
+  }),
+);
+
 /**
- * Cancela/elimina una reservación del usuario autenticado
- * Requiere autenticación (token JWT válido)
- * Solo puede eliminar sus propias reservaciones
+ * DELETE /api/reservaciones/:idReservacion
+ *
+ * Cancela/elimina una reservación
+ *
+ * @route DELETE /api/reservaciones/:idReservacion
  * @header Authorization: Bearer <token>
- * @param {number} idReservacion - ID de la reservación a eliminar
+ * @param {number} idReservacion - ID de reservación a eliminar
  * @returns {Object} Mensaje de éxito
+ *
+ * Consideraciones de seguridad:
+ * - Requiere autenticación JWT
+ * - Solo el propietario puede eliminar su reservación
+ * - Usa ID de usuario del token (no de la petición)
  */
-router.delete("/reservaciones/:idReservacion", auth, (req, res) => {
-  // Extrae el ID de la reservación de los parámetros de la URL
-  const { idReservacion } = req.params;
+router.delete(
+  "/reservaciones/:idReservacion",
+  auth,
+  asyncHandler(async (req, res) => {
+    // Extraer ID de reservación de los parámetros de URL
+    const { idReservacion } = req.params;
 
-  // Obtiene el ID del usuario autenticado
-  const idUsuario = req.usuario.idUsuario;
+    // Obtener ID de usuario autenticado del token JWT
+    const idUsuario = req.usuario.idUsuario;
 
-  // Consulta SQL para eliminar la reservación
-  // Solo elimina si pertenece al usuario autenticado
-  const sql = `
-    DELETE FROM RESERVACIONES WHERE idReservacion = ? AND USUARIOS_idUsuario = ?
-  `;
-
-  // Ejecuta la consulta de eliminación
-  db.query(sql, [idReservacion, idUsuario], (error, resultado) => {
-    // Si hay un error, responde con error 500
-    if (error) {
-      return res.status(500).json({
-        error: "Error al eliminar la reservacion"
+    // Validar ID de reservación
+    const id = parseInt(idReservacion, 10);
+    if (isNaN(id) || id <= 0) {
+      return res.status(400).json({
+        error: "ID de reservacion invalido",
       });
     }
 
-    // Verifica si se eliminó algún registro
-    // Si affectedRows es 0, no se encontró la reservación o no pertenece al usuario
+    // Consulta SQL para eliminar reservación
+    // Solo elimina si pertenece al usuario autenticado
+    const sql = `
+    DELETE FROM RESERVACIONES
+    WHERE idReservacion = ? AND USUARIOS_idUsuario = ?
+  `;
+
+    const [resultado] = await pool.query(sql, [id, idUsuario]);
+
+    // Verificar si alguna fila fue afectada
     if (resultado.affectedRows === 0) {
       return res.status(404).json({
-        error: "Reservación no encontrada o no pertenece al usuario"
+        error: "Reservacion no encontrada o no pertenece al usuario",
       });
     }
 
-    // Responde con éxito
     res.json({ message: "Reservacion cancelada correctamente" });
-  });
-});
+  }),
+);
 
-// PUT /api/reservaciones/:idReservacion
 /**
- * Edita/actualiza una reservación del usuario autenticado
- * Requiere autenticación (token JWT válido)
- * Valida que no haya conflictos de horarios al actualizar
- * Solo puede editar sus propias reservaciones
- * 
+ * PUT /api/reservaciones/:idReservacion
+ *
+ * Actualiza/modifica una reservación
+ *
  * @route PUT /api/reservaciones/:idReservacion
  * @header Authorization: Bearer <token>
- * @param {number} idReservacion - ID de la reservación a editar
- * @param {string} fecha - Nueva fecha (opcional)
- * @param {string} hora_inicio - Nueva hora de inicio (opcional)
- * @param {string} hora_fin - Nueva hora de fin (opcional)
- * @param {number} idCancha - Nueva ID de cancha (opcional)
+ * @param {number} idReservacion - ID de reservación a actualizar
+ * @param {string} fecha - Nueva fecha
+ * @param {string} hora_inicio - Nueva hora de inicio
+ * @param {string} hora_fin - Nueva hora de fin
+ * @param {number} idCancha - Nuevo ID de cancha
  * @returns {Object} Mensaje de éxito
+ *
+ * Consideraciones de seguridad:
+ * - Requiere autenticación JWT
+ * - Solo el propietario puede modificar su reservación
+ * - Valida disponibilidad para prevenir doble reserva
+ * - Usa consultas parametrizadas
  */
-router.put("/reservaciones/:idReservacion", auth, (req, res) => {
-  // Extrae el ID de la reservación de los parámetros de la URL
-  const { idReservacion } = req.params;
+router.put(
+  "/reservaciones/:idReservacion",
+  auth,
+  asyncHandler(async (req, res) => {
+    // Extraer ID de reservación de los parámetros de URL
+    const { idReservacion } = req.params;
 
-  // Extrae los nuevos datos del cuerpo de la solicitud
-  const {
-    fecha,
-    hora_inicio,
-    hora_fin,
-    idCancha
-  } = req.body;
+    // Extraer nuevos datos del cuerpo de la petición
+    const { fecha, hora_inicio, hora_fin, idCancha } = req.body;
 
-  // Obtiene el ID del usuario autenticado
-  const idUsuario = req.usuario.idUsuario;
+    // Obtener ID de usuario autenticado del token JWT
+    const idUsuario = req.usuario.idUsuario;
 
-  // Validación de Disponibilidad (pero excluyendo la reservacion a editar)
-  // ============================================
+    // Validar ID de reservación
+    const id = parseInt(idReservacion, 10);
+    if (isNaN(id) || id <= 0) {
+      return res.status(400).json({
+        error: "ID de reservacion invalido",
+      });
+    }
 
-  // Consulta SQL para verificar disponibilidad
-  // Excluye la reservación actual (idReservacion != ?)
-  const validarSql = `
-    SELECT * FROM RESERVACIONES
+    // Validar campos requeridos
+    if (!fecha || !hora_inicio || !hora_fin || !idCancha) {
+      return res.status(400).json({
+        error: "Fecha, hora_inicio, hora_fin e idCancha son requeridos",
+      });
+    }
+
+    // Validar formato de fecha
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(fecha)) {
+      return res.status(400).json({
+        error: "Formato de fecha invalido. Use YYYY-MM-DD",
+      });
+    }
+
+    // Validar formato de hora
+    const timeRegex = /^\d{2}:\d{2}(:\d{2})?$/;
+    if (!timeRegex.test(hora_inicio) || !timeRegex.test(hora_fin)) {
+      return res.status(400).json({
+        error: "Formato de hora invalido. Use HH:MM o HH:MM:SS",
+      });
+    }
+
+    // Validar que la hora de fin sea posterior a la hora de inicio
+    if (hora_inicio >= hora_fin) {
+      return res.status(400).json({
+        error: "La hora de fin debe ser posterior a la hora de inicio",
+      });
+    }
+
+    // Primero, verificar que la reservación existe y pertenece al usuario
+    const verifyOwnerSql = `
+    SELECT idReservacion FROM RESERVACIONES
+    WHERE idReservacion = ? AND USUARIOS_idUsuario = ?
+  `;
+
+    const [ownerCheck] = await pool.query(verifyOwnerSql, [id, idUsuario]);
+
+    if (ownerCheck.length === 0) {
+      return res.status(404).json({
+        error: "Reservacion no encontrada o no pertenece al usuario",
+      });
+    }
+
+    // Validación de disponibilidad (excluyendo la reservación actual)
+    const validarSql = `
+    SELECT idReservacion FROM RESERVACIONES
     WHERE fecha = ?
     AND CANCHAS_idCancha = ?
     AND idReservacion != ?
@@ -298,63 +432,50 @@ router.put("/reservaciones/:idReservacion", auth, (req, res) => {
       hora_inicio < ?
       AND hora_fin > ?
     )
+    LIMIT 1
   `;
 
-  // Ejecuta la consulta de validación
-  db.query(
-    validarSql,
-    [fecha, idCancha, idReservacion, hora_fin, hora_inicio],
-    (error, resultados) => {
-      // Si hay un error, responde con error 500
-      if (error) {
-        return res.status(500).json({ error: "Error al validar disponibilidad" });
-      }
+    const [existentes] = await pool.query(validarSql, [
+      fecha,
+      idCancha,
+      id,
+      hora_fin,
+      hora_inicio,
+    ]);
 
-      // Si hay resultados, significa que ya existe otra reservación en ese horario
-      if (resultados.length > 0) {
-        return res.status(409).json({
-          error: "La cancha ya está reservada en ese horario"
-        });
-      }
-
-      // Actualización de la Reservación
-      // Consulta SQL para actualizar la reservación
-      const updateSql = `
-        UPDATE RESERVACIONES 
-        SET fecha = ?, hora_inicio = ?, hora_fin = ?, USUARIOS_idUsuario = ?, CANCHAS_idCancha = ?
-        WHERE idReservacion = ? AND USUARIOS_idUsuario = ?
-      `;
-
-      // Ejecuta la consulta de actualización
-      db.query(
-        updateSql,
-        [fecha, hora_inicio, hora_fin, idUsuario, idCancha, idReservacion, idUsuario],
-        (error, result) => {
-          // Si hay un error, responde con error 500
-          if (error) {
-            console.error(error);
-            return res.status(500).json({
-              error: "Error al actualizar reservación",
-              detalle: error.sqlMessage
-            });
-          }
-
-          // Verifica si se actualizó algún registro
-          if (result.affectedRows === 0) {
-            return res.status(404).json({
-              error: "Reservación no encontrada o no pertenece al usuario"
-            });
-          }
-
-          // Responde con éxito
-          res.json({
-            message: "Reservación modificada correctamente",
-          });
-        }
-      );
+    // Si existe una reservación que se superpone, retornar error de conflicto
+    if (existentes.length > 0) {
+      return res.status(409).json({
+        error: "La cancha ya esta reservada en ese horario",
+      });
     }
-  );
-});
 
-// Exporta el enrutador para ser utilizado en index.js
+    // Actualizar reservación
+    const updateSql = `
+    UPDATE RESERVACIONES
+    SET fecha = ?, hora_inicio = ?, hora_fin = ?, CANCHAS_idCancha = ?
+    WHERE idReservacion = ? AND USUARIOS_idUsuario = ?
+  `;
+
+    const [result] = await pool.query(updateSql, [
+      fecha,
+      hora_inicio,
+      hora_fin,
+      idCancha,
+      id,
+      idUsuario,
+    ]);
+
+    // Verificar si la actualización fue exitosa
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        error: "Reservacion no encontrada o no pertenece al usuario",
+      });
+    }
+
+    res.json({ message: "Reservacion modificada correctamente" });
+  }),
+);
+
+// Exportar router para usar en index.js
 module.exports = router;
