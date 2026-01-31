@@ -1,179 +1,357 @@
-# Aplicación de Reservación de Canchas de Pádel
+# 🏟️ A La Reja - Sistema de Reservación de Canchas de Pádel
 
-API REST para la gestión de reservas de canchas de pádel. Permite a los usuarios registrarse, iniciar sesión, consultar disponibilidad de canchas y realizar reservaciones.
+<div align="center">
 
-## Descripción
+![Next.js](https://img.shields.io/badge/Next.js-16.1.6-black?style=for-the-badge&logo=next.js)
+![React](https://img.shields.io/badge/React-19.2.3-61DAFB?style=for-the-badge&logo=react)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=for-the-badge&logo=typescript)
+![Express](https://img.shields.io/badge/Express-5.2.1-grey?style=for-the-badge&logo=express)
+![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1?style=for-the-badge&logo=mysql)
+![NextAuth.js](https://img.shields.io/badge/NextAuth.js-5.0.0--beta.30-000000?style=for-the-badge)
 
-Esta API proporciona endpoints para:
+![Node.js](https://img.shields.io/badge/Node.js-20+-339933?style=for-the-badge&logo=node.js)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind-4-38B2AC?style=for-the-badge&logo=tailwind-css)
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker)
 
-- Autenticación de usuarios (registro e inicio de sesión)
-- Gestión de canchas disponibles
-- Creación, consulta, modificación y cancelación de reservaciones
-- Validación de horarios para evitar conflictos
+**Estado del Proyecto:** 🚀 En Producción  
+**Versión:** 0.1.0
 
-## Características Principales
+</div>
 
-- **Autenticación Segura**: Sistema de login con tokens JWT
-- **Gestión de Usuarios**: Registro y autenticación de usuarios con encriptación de contraseñas
-- **Catálogo de Canchas**: Consulta de canchas disponibles con precios por hora
-- **Sistema de Reservas**: Creación de reservaciones con validación de disponibilidad
-- **Validación de Horarios**: Evita conflictos de horarios en las reservaciones
-- **Gestión Completa de Reservas**: Los usuarios pueden crear, ver, editar y cancelar sus reservaciones
+---
 
-## Tecnologías Usadas
+## 📋 Descripción
 
-| Tecnología                                         | Propósito                       |
-| -------------------------------------------------- | ------------------------------- |
-| [Node.js](https://nodejs.org/)                     | Entorno de ejecución JavaScript |
-| [Express](https://expressjs.com/)                  | Framework web para API REST     |
-| [MySQL](https://www.mysql.com/)                    | Base de datos relacional        |
-| [MySQL2](https://www.npmjs.com/package/mysql2)     | Driver de MySQL para Node.js    |
-| [JWT](https://jwt.io/)                             | Autenticación basada en tokens  |
-| [bcryptjs](https://www.npmjs.com/package/bcryptjs) | Encriptación de contraseñas     |
-| [dotenv](https://www.npmjs.com/package/dotenv)     | Variables de entorno            |
-| [cors](https://www.npmjs.com/package/cors)         | Manejo de CORS                  |
+**A La Reja** es una aplicación web completa para la gestión y reservación de canchas de pádel. Permite a los usuarios consultar disponibilidad, realizar reservas de canchas en horarios específicos, gestionar sus reservaciones y visualizar el historial de partidos jugados.
 
-## Estructura del Proyecto
+El sistema está construido con una arquitectura **full-stack** que incluye:
+
+- **Frontend:** Next.js 16 con TypeScript, React 19 y Tailwind CSS v4
+- **Backend:** Express.js con API REST
+- **Base de Datos:** MySQL 8.0 con pool de conexiones
+- **Autenticación:** NextAuth.js v5 (Auth.js) + JWT
+- **Despliegue:** Docker Compose para backend + Vercel para frontend
+
+---
+
+## ✨ Características Principales
+
+### 👥 Gestión de Usuarios
+
+- **Registro de usuarios** con validación de datos y encriptación de contraseñas (bcryptjs)
+- **Inicio de sesión** con tokens JWT
+- **Gestión de perfil** con actualización de datos personales
+- **Sistema de autenticación seguro** mediante NextAuth.js
+- **Persistencia de sesiones** con cookies seguras
+
+### 🏸 Reservación de Canchas
+
+- **Catálogo de canchas** con información de ubicación y precios por hora
+- **Calendario interactivo** para selección de fechas
+- **Selección de horarios** disponibles en tiempo real
+- **Validación de disponibilidad** para evitar conflictos
+- **Confirmación de reservas** con resumen de detalles
+- **Historial de reservaciones** (próximas y completadas)
+
+### 🔒 Seguridad
+
+- **Autenticación JWT** con tokens firmados criptográficamente
+- **Protección de rutas** mediante middleware de autenticación
+- **Encriptación de contraseñas** con bcrypt (10 rondas de salt)
+- **Prevención de inyección SQL** mediante consultas parametrizadas
+- **Validación de entrada** en todos los endpoints
+- **Transacciones de base de datos** para prevenir race conditions
+
+### 🛡️ Prevención de Conflictos
+
+- **Bloqueo de filas** (FOR UPDATE) durante transacciones
+- **Validación de horarios** para evitar reservas duplicadas
+- **Validación de fechas pasadas** en el frontend
+- **Bloqueo de horarios ya reservados** en tiempo real
+
+---
+
+## 🏗️ Arquitectura del Proyecto
 
 ```
-proyecto/
-├── .env                 # Variables de entorno
-├── .gitignore           # Archivos ignorados por Git
-├── index.js             # Punto de entrada de la aplicación
-├── package.json         # Dependencias y scripts del proyecto
-├── config/
-│   └── db.js            # Configuración de conexión a MySQL
-├── middlewares/
-│   └── auth.js          # Middleware de autenticación JWT
-└── routes/
-    ├── usuarios.js      # Rutas de usuarios y login
-    ├── canchas.js       # Rutas de gestión de canchas
-    └── reservaciones.js # Rutas de gestión de reservaciones
+a_la_reja/
+├── app/                          # Frontend (Next.js 16)
+│   ├── api/                      # API routes de Next.js
+│   │   └── auth/                 # NextAuth.js handlers
+│   │       └── [...nextauth]/    # Configuración de autenticación
+│   ├── components/               # Componentes reutilizables
+│   │   ├── layout/               # Componentes de layout (Header, Footer, etc.)
+│   │   ├── landing/              # Componentes de página principal
+│   │   ├── providers/            # Context providers (SessionProvider)
+│   │   └── ui/                   # Componentes UI (Button, Cards, Badge)
+│   ├── context/                  # React Context (AuthContext)
+│   ├── dashboard/                # Página del dashboard
+│   ├── login/                    # Página de inicio de sesión
+│   ├── register/                 # Página de registro
+│   ├── reservar/                 # Flujo de reservación
+│   │   ├── [cancha]/             # Selección de fecha y hora
+│   │   └── [cancha]/confirmar/   # Confirmación de reserva
+│   ├── mis_reservas/             # Historial de reservaciones
+│   ├── perfil/                   # Perfil del usuario
+│   └── lib/                      # Utilidades y tipos (types.ts, constants.ts)
+│
+├── backend/                      # Backend (Express.js)
+│   ├── config/                   # Configuración (db.js - pool de conexiones)
+│   ├── middlewares/              # Middlewares (auth.js)
+│   ├── routes/                   # Rutas de la API
+│   │   ├── usuarios.js           # Endpoints de usuarios y autenticación
+│   │   ├── canchas.js            # Endpoints de canchas
+│   │   └── reservaciones.js      # Endpoints de reservaciones
+│   ├── Dockerfile                # Imagen Docker del backend
+│   ├── index.js                  # Punto de entrada del servidor
+│   └── package.json              # Dependencias del backend
+│
+├── migrations/                   # Scripts de base de datos
+│   ├── 001_create_tables.sql     # Creación de tablas
+│   ├── 002_seed_canchas.sql      # Datos iniciales de canchas
+│   └── 003_add_telefono.sql      # Migración de teléfono
+│
+├── types/                        # Tipos TypeScript (next-auth.d.ts)
+├── docker-compose.yml            # Orquestación Docker (MySQL + Backend)
+├── next.config.ts                # Configuración de Next.js
+├── tailwind.config.mjs           # Configuración de Tailwind CSS
+├── tsconfig.json                 # Configuración de TypeScript
+├── auth.ts                       # Configuración de NextAuth.js
+└── package.json                  # Dependencias del frontend
 ```
 
-## Descripción de Carpetas y Archivos
+### 🔄 Flujo de Datos
 
-### Archivos del Raíz
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         ARQUITECTURA DEL SISTEMA                        │
+└─────────────────────────────────────────────────────────────────────────┘
 
-| Archivo        | Descripción                                                                                                     |
-| -------------- | --------------------------------------------------------------------------------------------------------------- |
-| `.env`         | Archivo de configuración con variables de entorno (DB_HOST, DB_USER, DB_PASSWORD, DB_NAME, DB_PORT, JWT_SECRET) |
-| `.gitignore`   | Define qué archivos/directorios ignorar en Git                                                                  |
-| `index.js`     | Archivo principal que configura Express y carga las rutas                                                       |
-| `package.json` | Metadatos del proyecto y lista de dependencias                                                                  |
+  ┌──────────────┐         ┌────────────────┐         ┌────────────────┐
+  │   Navegador  │◄──────►│  Frontend      │◄──────►│   Backend API   │
+  │   (Usuario)  │  HTTPS  │  Next.js 16    │  HTTPS  │   Express.js   │
+  └──────────────┘         └────────────────┘         └───────┬────────┘
+                                                               │
+                                                               │ TCP
+                                                               ▼
+                                                 ┌────────────────────────┐
+                                                 │    Base de Datos       │
+                                                 │    MySQL 8.0           │
+                                                 │    (Pool de Conexiones)│
+                                                 └────────────────────────┘
+```
 
-### Directorio `config/`
+### 🔐 Flujo de Autenticación
 
-| Archivo | Descripción                                        |
-| ------- | -------------------------------------------------- |
-| `db.js` | Configuración de la conexión a MySQL usando mysql2 |
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    FLUJO DE AUTENTICACIÓN                            │
+└─────────────────────────────────────────────────────────────────────┘
 
-### Directorio `middlewares/`
+  1. Usuario envía credenciales
+     POST /api/login { email, password }
+                        │
+                        ▼
+  2. Backend verifica credenciales (bcrypt)
+                        │
+                        ▼
+  3. Backend genera JWT token (1 hora de validez)
+     Returns: { token, user }
+                        │
+                        ▼
+  4. Frontend almacena token (Cookies + SessionStorage)
+                        │
+                        ▼
+  5. Frontend incluye token en headers
+     Authorization: Bearer <token>
+                        │
+                        ▼
+  6. Middleware auth.js verifica token JWT
+                        │
+                        ▼
+  7. Acceso a rutas protegidas
+```
 
-| Archivo   | Descripción                                                      |
-| --------- | ---------------------------------------------------------------- |
-| `auth.js` | Middleware que verifica tokens JWT en las solicitudes protegidas |
+---
 
-### Directorio `routes/`
+## 🛠️ Tecnologías Utilizadas
 
-| Archivo            | Descripción                                  |
-| ------------------ | -------------------------------------------- |
-| `usuarios.js`      | Endpoints para registro de usuarios y login  |
-| `canchas.js`       | Endpoints para consultar canchas disponibles |
-| `reservaciones.js` | Endpoints CRUD para gestión de reservaciones |
+### Frontend
 
-## Prerrequisitos
+| Tecnología   | Versión    | Propósito            |
+| ------------ | ---------- | -------------------- |
+| Next.js      | 16.1.6     | Framework web React  |
+| React        | 19.2.3     | Biblioteca de UI     |
+| TypeScript   | 5.0        | Tipado estático      |
+| Tailwind CSS | 4.x        | Framework de estilos |
+| NextAuth.js  | 5.0.0-beta | Autenticación        |
+| js-cookie    | 3.0.5      | Gestión de cookies   |
 
-- **Node.js** (versión 14 o superior)
-- **MySQL** (versión 8.0 o superior)
+### Backend
+
+| Tecnología   | Versión | Propósito                   |
+| ------------ | ------- | --------------------------- |
+| Node.js      | 20+     | Entorno de ejecución        |
+| Express      | 5.2.1   | Framework web API REST      |
+| MySQL2       | 3.16.2  | Driver de base de datos     |
+| bcryptjs     | 3.0.3   | Encriptación de contraseñas |
+| jsonwebtoken | 9.0.3   | Tokens JWT                  |
+| cors         | 2.8.6   | Control de acceso HTTP      |
+| dotenv       | 17.2.3  | Variables de entorno        |
+
+### Infraestructura
+
+| Tecnología     | Propósito                 |
+| -------------- | ------------------------- |
+| Docker         | Contenedorización         |
+| Docker Compose | Orquestación de servicios |
+| MySQL 8.0      | Base de datos relacional  |
+| Vercel         | Despliegue del frontend   |
+
+---
+
+## 📦 Tipos de Datos Principales
+
+### Court (Cancha)
+
+```typescript
+interface Court {
+  idCancha: number;
+  nombre: string;
+  ubicacion: string;
+  precio_por_hora: number;
+}
+```
+
+### Reservation (Reservación)
+
+```typescript
+interface Reservation {
+  idReservacion: number;
+  fecha: string; // Formato: YYYY-MM-DD
+  hora_inicio: string; // Formato: HH:MM:SS
+  hora_fin: string; // Formato: HH:MM:SS
+  cancha: string;
+  ubicacion?: string;
+}
+```
+
+### User (Usuario)
+
+```typescript
+interface User {
+  id: string;
+  nombre: string;
+  email: string;
+  telefono?: string | null;
+}
+```
+
+### BookedSlot (Horario Ocupado)
+
+```typescript
+interface BookedSlot {
+  idReservacion: number;
+  hora_inicio: string;
+  hora_fin: string;
+}
+```
+
+---
+
+## 🚀 Instalación y Configuración
+
+### Prerrequisitos
+
+- **Node.js** 20 o superior
+- **Docker** y **Docker Compose**
 - **npm** (incluido con Node.js)
-
-### Base de Datos
-
-La aplicación requiere una base de datos MySQL llamada `padel_db` con las siguientes tablas:
-
-```sql
-CREATE TABLE USUARIOS (
-    idUsuario INT AUTO_INCREMENT PRIMARY KEY,
-    nombre VARCHAR(100) NOT NULL,
-    email VARCHAR(100) UNIQUE NOT NULL,
-    password VARCHAR(255) NOT NULL
-);
-
-CREATE TABLE CANCHAS (
-    idCancha INT AUTO_INCREMENT PRIMARY KEY,
-    nombre VARCHAR(100) NOT NULL,
-    ubicacion VARCHAR(255) NOT NULL,
-    precio_por_hora DECIMAL(10,2) NOT NULL
-);
-
-CREATE TABLE RESERVACIONES (
-    idReservacion INT AUTO_INCREMENT PRIMARY KEY,
-    fecha DATE NOT NULL,
-    hora_inicio TIME NOT NULL,
-    hora_fin TIME NOT NULL,
-    USUARIOS_idUsuario INT,
-    CANCHAS_idCancha INT,
-    FOREIGN KEY (USUARIOS_idUsuario) REFERENCES USUARIOS(idUsuario),
-    FOREIGN KEY (CANCHAS_idCancha) REFERENCES CANCHAS(idCancha)
-);
-```
-
-## Instalación y Configuración
 
 ### 1. Clonar el Repositorio
 
 ```bash
 git clone <url-del-repositorio>
-cd dfs-borrador-avance-proyecto-final
+cd a_la_reja
 ```
 
-### 2. Instalar Dependencias
+### 2. Configurar Variables de Entorno
+
+#### Frontend (.env.local)
+
+```env
+# NextAuth Configuration
+AUTH_SECRET=tu-auth-secret-generado-con-npx-auth-secret
+
+# Backend API URL (VPS o servidor local)
+NEXT_PUBLIC_API_URL=http://localhost:3001
+```
+
+#### Backend (.env para Docker Compose)
+
+```env
+# Base de Datos
+MYSQL_ROOT_PASSWORD=rootpassword
+DB_USER=admin
+DB_PASSWORD=root
+DB_NAME=a_la_reja
+
+# Seguridad
+JWT_SECRET=tu-jwt-secret-muy-seguro
+
+# CORS
+FRONTEND_URL=http://localhost:3000
+```
+
+### 3. Iniciar con Docker Compose (Backend + MySQL)
 
 ```bash
+# Iniciar servicios
+docker-compose up -d
+
+# Ver logs
+docker-compose logs -f
+
+# Verificar estado
+docker-compose ps
+```
+
+### 4. Instalar Dependencias del Frontend
+
+```bash
+# En la raíz del proyecto
 npm install
 ```
 
-### 3. Configurar Variables de Entorno
-
-Crear un archivo `.env` en la raíz del proyecto con las siguientes variables:
-
-```env
-# Configuración de Base de Datos
-DB_HOST=localhost
-DB_USER=root
-DB_PASSWORD=tu_password
-DB_NAME=padel_db
-DB_PORT=3306
-
-# Clave Secreta para JWT
-JWT_SECRET=clave_super_secreta
-```
-
-### 4. Crear la Base de Datos
-
-Ejecutar el script SQL para crear las tablas necesarias en MySQL.
-
-### 5. Iniciar el Servidor
+### 5. Ejecutar en Desarrollo
 
 ```bash
-node index.js
+# Frontend
+npm run dev
+
+# El servidor se ejecutará en http://localhost:3000
 ```
 
-El servidor se iniciará en el puerto **3000**.
+### 6. Construir para Producción
 
-## Endpoints
+```bash
+# Construir aplicación Next.js
+npm run build
+
+# Iniciar en producción
+npm start
+```
+
+---
+
+## 📡 Documentación de la API
 
 ### 🔐 Autenticación
 
-| Método | Endpoint        | Descripción             | Requiere Token |
-| ------ | --------------- | ----------------------- | -------------- |
-| POST   | `/api/login`    | Iniciar sesión          | No             |
-| POST   | `/api/usuarios` | Registrar nuevo usuario | No             |
-
 #### POST `/api/login`
 
-**Body:**
+Inicia sesión de usuario y retorna un token JWT.
+
+**Request:**
 
 ```json
 {
@@ -182,17 +360,34 @@ El servidor se iniciará en el puerto **3000**.
 }
 ```
 
-**Respuesta:**
+**Response (200 OK):**
 
 ```json
 {
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": 1,
+    "nombre": "Juan Pérez",
+    "email": "juan@email.com"
+  }
 }
 ```
 
+**Response (401 Unauthorized):**
+
+```json
+{
+  "error": "Credenciales invalidas"
+}
+```
+
+---
+
 #### POST `/api/usuarios`
 
-**Body:**
+Registra un nuevo usuario en el sistema.
+
+**Request:**
 
 ```json
 {
@@ -202,12 +397,20 @@ El servidor se iniciará en el puerto **3000**.
 }
 ```
 
-**Respuesta:**
+**Response (201 Created):**
 
 ```json
 {
-  "message": "Usuario creado",
+  "message": "Usuario creado exitosamente",
   "id": 1
+}
+```
+
+**Response (400 Bad Request):**
+
+```json
+{
+  "error": "La contrasena debe tener al menos 6 caracteres"
 }
 ```
 
@@ -215,45 +418,69 @@ El servidor se iniciará en el puerto **3000**.
 
 ### 🏟️ Canchas
 
-| Método | Endpoint       | Descripción              | Requiere Token |
-| ------ | -------------- | ------------------------ | -------------- |
-| GET    | `/api/canchas` | Listar todas las canchas | No             |
-
 #### GET `/api/canchas`
 
-**Respuesta:**
+Obtiene todas las canchas disponibles.
+
+**Response (200 OK):**
 
 ```json
 [
   {
-    "nombre": "Cancha 1",
+    "idCancha": 1,
+    "nombre": "Pista 1",
     "ubicacion": "Calle Principal 123",
-    "precio_por_hora": 50.0
+    "precio_por_hora": 25.0
   },
   {
-    "nombre": "Cancha 2",
+    "idCancha": 2,
+    "nombre": "Pista 2",
     "ubicacion": "Avenida Central 456",
-    "precio_por_hora": 60.0
+    "precio_por_hora": 20.0
   }
 ]
 ```
 
 ---
 
-### 📅 Reservaciones
+#### GET `/api/canchas/:idCancha`
 
-| Método | Endpoint                                         | Descripción                    | Requiere Token |
-| ------ | ------------------------------------------------ | ------------------------------ | -------------- |
-| POST   | `/api/reservaciones`                             | Crear nueva reservación        | Sí             |
-| GET    | `/api/reservaciones`                             | Listar todas las reservaciones | No             |
-| GET    | `/api/reservaciones?fecha=YYYY-MM-DD&canchaId=1` | Ver disponibilidad             | No             |
-| GET    | `/api/reservaciones/usuario`                     | Mis reservaciones              | Sí             |
-| PUT    | `/api/reservaciones/:idReservacion`              | Editar reservación             | Sí             |
-| DELETE | `/api/reservaciones/:idReservacion`              | Cancelar reservación           | Sí             |
+Obtiene una cancha específica por ID.
+
+**Response (200 OK):**
+
+```json
+{
+  "idCancha": 1,
+  "nombre": "Pista 1",
+  "ubicacion": "Calle Principal 123",
+  "precio_por_hora": 25.0
+}
+```
+
+**Response (404 Not Found):**
+
+```json
+{
+  "error": "Cancha no encontrada"
+}
+```
+
+---
+
+### 📅 Reservaciones
 
 #### POST `/api/reservaciones`
 
-**Body:**
+Crea una nueva reservación.
+
+**Headers:**
+
+```
+Authorization: Bearer <token>
+```
+
+**Request:**
 
 ```json
 {
@@ -264,26 +491,38 @@ El servidor se iniciará en el puerto **3000**.
 }
 ```
 
-**Encabezados:**
-
-```
-Authorization: Bearer <token>
-```
-
-**Respuesta:**
+**Response (201 Created):**
 
 ```json
 {
-  "message": "Reservación creada",
+  "message": "Reservacion creada exitosamente",
   "idReservacion": 1
 }
 ```
 
-#### GET `/api/reservaciones?fecha=2026-02-15&canchaId=1`
+**Response (400 Bad Request):**
 
-Consulta la disponibilidad de una cancha en una fecha específica.
+```json
+{
+  "error": "Formato de fecha invalido. Use YYYY-MM-DD"
+}
+```
 
-**Respuesta:**
+**Response (409 Conflict):**
+
+```json
+{
+  "error": "La cancha ya esta reservada en ese horario"
+}
+```
+
+---
+
+#### GET `/api/reservaciones?fecha=YYYY-MM-DD&canchaId=1`
+
+Obtiene los horarios ocupados para una fecha y cancha específicas.
+
+**Response (200 OK):**
 
 ```json
 [
@@ -295,9 +534,74 @@ Consulta la disponibilidad de una cancha en una fecha específica.
 ]
 ```
 
+---
+
+#### GET `/api/reservaciones/usuario`
+
+Obtiene las reservaciones del usuario autenticado.
+
+**Headers:**
+
+```
+Authorization: Bearer <token>
+```
+
+**Response (200 OK):**
+
+```json
+[
+  {
+    "idReservacion": 1,
+    "fecha": "2026-02-15",
+    "hora_inicio": "10:00:00",
+    "hora_fin": "11:00:00",
+    "cancha": "Pista 1",
+    "ubicacion": "Calle Principal 123"
+  }
+]
+```
+
+---
+
+#### DELETE `/api/reservaciones/:idReservacion`
+
+Cancela una reservación existente.
+
+**Headers:**
+
+```
+Authorization: Bearer <token>
+```
+
+**Response (200 OK):**
+
+```json
+{
+  "message": "Reservacion cancelada correctamente"
+}
+```
+
+**Response (404 Not Found):**
+
+```json
+{
+  "error": "Reservacion no encontrada o no pertenece al usuario"
+}
+```
+
+---
+
 #### PUT `/api/reservaciones/:idReservacion`
 
-**Body:**
+Modifica una reservación existente.
+
+**Headers:**
+
+```
+Authorization: Bearer <token>
+```
+
+**Request:**
 
 ```json
 {
@@ -308,38 +612,165 @@ Consulta la disponibilidad de una cancha en una fecha específica.
 }
 ```
 
-**Encabezados:**
+**Response (200 OK):**
+
+```json
+{
+  "message": "Reservacion modificada correctamente"
+}
+```
+
+---
+
+#### GET `/api/usuarios/me`
+
+Obtiene el perfil del usuario autenticado.
+
+**Headers:**
 
 ```
 Authorization: Bearer <token>
 ```
 
-#### DELETE `/api/reservaciones/:idReservacion`
+**Response (200 OK):**
 
-**Encabezados:**
+```json
+{
+  "idUsuario": 1,
+  "nombre": "Juan Pérez",
+  "email": "juan@email.com",
+  "telefono": "+52 55 1234 5678"
+}
+```
+
+---
+
+#### PUT `/api/usuarios/me`
+
+Actualiza el perfil del usuario autenticado.
+
+**Headers:**
 
 ```
 Authorization: Bearer <token>
 ```
 
-## 🔒 Autenticación
+**Request:**
 
-Para endpoints protegidos, incluir el token JWT en el header:
+```json
+{
+  "nombre": "Juan Pérez Actualizado",
+  "telefono": "+52 55 1234 5678"
+}
+```
 
+**Response (200 OK):**
+
+```json
+{
+  "message": "Perfil actualizado exitosamente",
+  "user": {
+    "idUsuario": 1,
+    "nombre": "Juan Pérez Actualizado",
+    "email": "juan@email.com",
+    "telefono": "+52 55 1234 5678"
+  }
+}
 ```
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+---
+
+## 📖 Guía de Uso
+
+### Flujo de Reservación
+
+1. **Registro/Login**
+   - El usuario accede a `/register` o `/login`
+   - Completa el formulario con sus datos
+   - Recibe un token JWT almacenado en cookies
+
+2. **Selección de Cancha**
+   - Desde el dashboard, el usuario hace clic en "Reservar"
+   - Visualiza las canchas disponibles con precios
+
+3. **Selección de Fecha y Hora**
+   - El usuario navega el calendario interactivo
+   - Selecciona una fecha (fechas pasadas deshabilitadas)
+   - El sistema muestra horarios disponibles en tiempo real
+   - Horarios ya reservados aparecen marcados como ocupados
+
+4. **Confirmación**
+   - El usuario selecciona la duración (1h, 1.5h, 2h)
+   - Puede añadir notas opcionales
+   - Revisa el resumen de la reservación
+   - Confirma la reserva
+
+5. **Mis Reservas**
+   - El usuario puede ver sus reservaciones próximas
+   - Accede al historial de reservaciones completadas
+   - Puede cancelar reservaciones futuras
+
+---
+
+## 🐳 Despliegue con Docker
+
+### Construcción de Imágenes
+
+```bash
+# Construir imagen del backend
+cd backend
+docker build -t a-la-reja-backend .
+
+# O usar docker-compose
+docker-compose build
 ```
+
+### Variables de Entorno en Producción
+
+```env
+# Backend (VPS)
+MYSQL_ROOT_PASSWORD=password-seguro
+DB_USER=admin
+DB_PASSWORD=password-seguro
+DB_NAME=a_la_reja
+JWT_SECRET=clave-muy-segura-minimo-32-caracteres
+FRONTEND_URL=https://a-la-reja.vercel.app
+```
+
+---
+
+## 🤝 Contribuir
+
+1. Haz un fork del repositorio
+2. Crea una rama para tu feature (`git checkout -b feature/nueva-funcionalidad`)
+3. Realiza tus cambios y commitea (`git commit -m 'Add nueva funcionalidad'`)
+4. Haz push a la rama (`git push origin feature/nueva-funcionalidad`)
+5. Abre un Pull Request
+
+---
 
 ## 📄 Licencia
 
-ISC
-
-## Autores
-
-Omar Sebastian Diego Cortes
-
-Paola Fuentes Bustamante
-
-Fernando David Rodriguez Ortega
+Este proyecto está bajo la licencia ISC.
 
 ---
+
+## 👥 Autores
+
+- **Omar Sebastian Diego Cortes**
+- **Paola Fuentes Bustamante**
+- **Fernando David Rodriguez Ortega**
+
+---
+
+## 📞 Contacto
+
+Para consultas o soporte, contacta a los autores directamente a través del repositorio.
+
+---
+
+<div align="center">
+
+**¡Gracias por usar A La Reja! 🏟️**
+
+</div>
