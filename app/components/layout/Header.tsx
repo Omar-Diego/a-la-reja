@@ -23,7 +23,10 @@ export default function Header() {
             <Link href="/" className="hover:text-primary transition-colors">
               Inicio
             </Link>
-            <Link href="#todo-lo-que-necesitas" className="hover:text-primary transition-colors">
+            <Link
+              href="#todo-lo-que-necesitas"
+              className="hover:text-primary transition-colors"
+            >
               Reservar
             </Link>
           </nav>
