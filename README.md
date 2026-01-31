@@ -69,6 +69,15 @@ El sistema está construido con una arquitectura **full-stack** que incluye:
 - **Validación de fechas pasadas** en el frontend
 - **Bloqueo de horarios ya reservados** en tiempo real
 
+### 📱 Experiencia Desktop Exclusiva
+
+- **Bloqueo de dispositivos móviles** mediante CSS media queries (max-width: 768px)
+- **Componente MobileBlocker** que muestra mensaje personalizado en móviles
+- **Interfaz optimizada** exclusivamente para pantallas de escritorio
+- Los usuarios en móviles ven un mensaje instructivo: "Mejor experiencia en PC"
+- El contenido principal está oculto en dispositivos móviles
+- Ver: [`app/components/ui/MobileBlocker.tsx`](app/components/ui/MobileBlocker.tsx)
+
 ---
 
 ## 🏗️ Arquitectura del Proyecto
@@ -83,7 +92,7 @@ a_la_reja/
 │   │   ├── layout/               # Componentes de layout (Header, Footer, etc.)
 │   │   ├── landing/              # Componentes de página principal
 │   │   ├── providers/            # Context providers (SessionProvider)
-│   │   └── ui/                   # Componentes UI (Button, Cards, Badge)
+│   │   └── ui/                   # Componentes UI (Button, Cards, Badge, **MobileBlocker**)
 │   ├── context/                  # React Context (AuthContext)
 │   ├── dashboard/                # Página del dashboard
 │   ├── login/                    # Página de inicio de sesión
@@ -93,7 +102,8 @@ a_la_reja/
 │   │   └── [cancha]/confirmar/   # Confirmación de reserva
 │   ├── mis_reservas/             # Historial de reservaciones
 │   ├── perfil/                   # Perfil del usuario
-│   └── lib/                      # Utilidades y tipos (types.ts, constants.ts)
+│   ├── lib/                      # Utilidades y tipos (types.ts, constants.ts)
+│   └── layout.tsx                # Layout raíz con **MobileBlocker** integrado
 │
 ├── backend/                      # Backend (Express.js)
 │   ├── config/                   # Configuración (db.js - pool de conexiones)
@@ -256,6 +266,49 @@ interface BookedSlot {
   hora_fin: string;
 }
 ```
+
+---
+
+## 📱 Bloqueo de Dispositivos Móviles
+
+La aplicación incluye un sistema de bloqueo mediante CSS media queries para restringir el acceso desde dispositivos móviles:
+
+### Implementación
+
+**Componente:** [`app/components/ui/MobileBlocker.tsx`](app/components/ui/MobileBlocker.tsx)
+
+**CSS:** [`app/globals.css`](app/globals.css:19-27)
+
+```css
+/* Mobile blocker - mostrar mensaje en móvil, ocultar contenido */
+.mobile-blocker {
+  display: none;
+}
+
+.desktop-content {
+  display: block;
+}
+
+@media (max-width: 768px) {
+  .mobile-blocker {
+    display: block;
+  }
+
+  .desktop-content {
+    display: none;
+  }
+}
+```
+
+### Comportamiento
+
+- **En Desktop (> 768px):** Se muestra el contenido normal de la aplicación
+- **En Móvil (≤ 768px):** Se muestra un mensaje instructivo: "Mejor experiencia en PC"
+- El mensaje incluye un diseño atractivo con el logo de A La Reja y una explicación
+
+### Integración
+
+El `MobileBlocker` está integrado en el [`app/layout.tsx`](app/layout.tsx:46) y envuelve todo el contenido de la aplicación, proporcionando protección a nivel de raíz.
 
 ---
 
