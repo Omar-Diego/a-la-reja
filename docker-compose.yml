@@ -17,6 +17,7 @@ services:
       - mysql_data:/var/lib/mysql
       - ./migrations/001_create_tables.sql:/docker-entrypoint-initdb.d/001_create_tables.sql:ro
       - ./migrations/002_seed_canchas.sql:/docker-entrypoint-initdb.d/002_seed_canchas.sql:ro
+      - ./migrations/003_add_telefono.sql:/docker-entrypoint-initdb.d/003_add_telefono.sql:ro
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-rootpassword}"]
       interval: 10s

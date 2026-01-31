@@ -22,6 +22,7 @@ export interface User {
   id: string;
   nombre: string;
   email: string;
+  telefono?: string | null;
 }
 
 interface AuthContextType {
@@ -32,6 +33,7 @@ interface AuthContextType {
   login: (token: string, user: User) => void;
   logout: () => Promise<void>;
   getAuthHeader: () => Record<string, string>;
+  updateUser: (userData: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -83,6 +85,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await nextAuthSignOut({ callbackUrl: "/login" });
   }, []);
 
+  const updateUser = useCallback((userData: Partial<User>) => {
+    setUser((prevUser) => {
+      if (!prevUser) return null;
+      return { ...prevUser, ...userData };
+    });
+  }, []);
+
   const getAuthHeader = useCallback((): Record<string, string> => {
     if (token) {
       return { Authorization: `Bearer ${token}` };
@@ -98,6 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     login,
     logout,
     getAuthHeader,
+    updateUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

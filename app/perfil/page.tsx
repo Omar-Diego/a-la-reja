@@ -2,17 +2,155 @@
 
 import { useAuth } from "@/app/context/AuthContext";
 import Image from "next/image";
+import { useState, useEffect } from "react";
+import { API_URL } from "@/app/lib/constants";
+import { formatShortDate } from "@/app/lib/types";
+
+interface UserProfile {
+  idUsuario: number;
+  nombre: string;
+  email: string;
+  telefono: string | null;
+}
+
+interface UserStats {
+  total: number;
+  completed: number;
+  upcoming: number;
+}
+
+interface ActivityItem {
+  idReservacion: number;
+  fecha: string;
+  hora_inicio: string;
+  hora_fin: string;
+  cancha: string;
+  status: "upcoming" | "completed";
+}
 
 export default function PerfilPage() {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, getAuthHeader, updateUser } = useAuth();
 
-  if (isLoading) {
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [stats, setStats] = useState<UserStats>({ total: 0, completed: 0, upcoming: 0 });
+  const [activity, setActivity] = useState<ActivityItem[]>([]);
+  const [dataLoading, setDataLoading] = useState(true);
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [editNombre, setEditNombre] = useState("");
+  const [editTelefono, setEditTelefono] = useState("");
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    async function fetchProfileData() {
+      const headers = getAuthHeader();
+      if (!headers.Authorization) {
+        setDataLoading(false);
+        return;
+      }
+
+      try {
+        const [profileRes, statsRes, activityRes] = await Promise.all([
+          fetch(`${API_URL}/api/usuarios/me`, {
+            headers: { ...headers, "Content-Type": "application/json" },
+          }),
+          fetch(`${API_URL}/api/usuarios/me/stats`, {
+            headers: { ...headers, "Content-Type": "application/json" },
+          }),
+          fetch(`${API_URL}/api/usuarios/me/activity`, {
+            headers: { ...headers, "Content-Type": "application/json" },
+          }),
+        ]);
+
+        if (profileRes.ok) {
+          const profileData = await profileRes.json();
+          setProfile(profileData);
+          setEditNombre(profileData.nombre);
+          setEditTelefono(profileData.telefono || "");
+        }
+
+        if (statsRes.ok) {
+          const statsData = await statsRes.json();
+          setStats(statsData);
+        }
+
+        if (activityRes.ok) {
+          const activityData = await activityRes.json();
+          setActivity(activityData);
+        }
+      } catch {
+        // Silent fail - use defaults
+      } finally {
+        setDataLoading(false);
+      }
+    }
+
+    fetchProfileData();
+  }, [getAuthHeader]);
+
+  const handleEditClick = () => {
+    setEditNombre(profile?.nombre || user?.nombre || "");
+    setEditTelefono(profile?.telefono || "");
+    setSaveError(null);
+    setIsEditing(true);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setSaveError(null);
+  };
+
+  const handleSaveProfile = async () => {
+    const headers = getAuthHeader();
+    if (!headers.Authorization) return;
+
+    setSaving(true);
+    setSaveError(null);
+
+    try {
+      const response = await fetch(`${API_URL}/api/usuarios/me`, {
+        method: "PUT",
+        headers: {
+          ...headers,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          nombre: editNombre.trim(),
+          telefono: editTelefono.trim() || null,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setProfile(data.user);
+        updateUser({
+          nombre: data.user.nombre,
+          telefono: data.user.telefono,
+        });
+        setIsEditing(false);
+      } else {
+        const errorData = await response.json();
+        setSaveError(errorData.error || "Error al guardar los cambios");
+      }
+    } catch {
+      setSaveError("Error de conexion. Intente de nuevo.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (isLoading || dataLoading) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
       </div>
     );
   }
+
+  const displayNombre = profile?.nombre || user?.nombre || "Usuario";
+  const displayEmail = profile?.email || user?.email || "No especificado";
+  const displayTelefono = profile?.telefono;
 
   return (
     <div className="bg-[#f8fafc] min-h-screen px-8 md:px-20 lg:px-36 py-16">
@@ -28,24 +166,62 @@ export default function PerfilPage() {
           {/* Card Header */}
           <div className="flex justify-between items-center p-6 border-b border-[#ededed]">
             <h2 className="font-barlow font-bold text-secondary text-lg">
-              INFORMACIÓN PERSONAL
+              INFORMACION PERSONAL
             </h2>
-            <button className="flex items-center gap-2 text-[#64748b] hover:text-secondary transition-colors">
-              <span className="material-symbols-outlined text-xl">edit</span>
-              <span className="text-sm font-medium">Editar</span>
-            </button>
+            {!isEditing ? (
+              <button
+                onClick={handleEditClick}
+                className="flex items-center gap-2 text-[#64748b] hover:text-secondary transition-colors"
+              >
+                <span className="material-symbols-outlined text-xl">edit</span>
+                <span className="text-sm font-medium">Editar</span>
+              </button>
+            ) : (
+              <div className="flex gap-2">
+                <button
+                  onClick={handleCancelEdit}
+                  disabled={saving}
+                  className="flex items-center gap-1 text-[#64748b] hover:text-secondary transition-colors text-sm px-3 py-1 rounded-lg border border-[#ededed]"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleSaveProfile}
+                  disabled={saving}
+                  className="flex items-center gap-1 bg-primary text-secondary text-sm font-medium px-3 py-1 rounded-lg hover:opacity-90 disabled:opacity-50"
+                >
+                  {saving ? (
+                    <span className="animate-spin material-symbols-outlined text-sm">
+                      sync
+                    </span>
+                  ) : (
+                    <span className="material-symbols-outlined text-sm">
+                      check
+                    </span>
+                  )}
+                  Guardar
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Profile Content */}
           <div className="p-6">
+            {/* Error Message */}
+            {saveError && (
+              <div className="bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-3 rounded-lg mb-6">
+                {saveError}
+              </div>
+            )}
+
             {/* Avatar and Name */}
             <div className="flex items-center gap-4 mb-8">
               <div className="w-20 h-20 rounded-full overflow-hidden shrink-0 bg-gray-200">
                 <Image
                   src={`https://ui-avatars.com/api/?name=${encodeURIComponent(
-                    user?.nombre || "Usuario",
+                    displayNombre,
                   )}&background=60A5FA&color=fff&size=80`}
-                  alt={user?.nombre || "Usuario"}
+                  alt={displayNombre}
                   width={80}
                   height={80}
                   className="w-full h-full object-cover"
@@ -53,7 +229,7 @@ export default function PerfilPage() {
               </div>
               <div>
                 <h3 className="font-bold text-secondary text-xl mb-2">
-                  {user?.nombre || "Usuario"}
+                  {displayNombre}
                 </h3>
                 <span className="bg-[#1e293b] text-white text-xs px-3 py-1 rounded-full">
                   Jugador
@@ -71,9 +247,19 @@ export default function PerfilPage() {
                   </span>
                   <label className="text-sm font-medium">Nombre</label>
                 </div>
-                <p className="text-secondary font-medium ml-8">
-                  {user?.nombre || "No especificado"}
-                </p>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={editNombre}
+                    onChange={(e) => setEditNombre(e.target.value)}
+                    className="ml-8 w-[calc(100%-2rem)] px-3 py-2 border border-[#e2e8f0] rounded-lg text-secondary focus:outline-none focus:border-primary"
+                    placeholder="Tu nombre"
+                  />
+                ) : (
+                  <p className="text-secondary font-medium ml-8">
+                    {displayNombre}
+                  </p>
+                )}
               </div>
 
               {/* Email */}
@@ -85,7 +271,7 @@ export default function PerfilPage() {
                   <label className="text-sm font-medium">Email</label>
                 </div>
                 <p className="text-secondary font-medium ml-8">
-                  {user?.email || "No especificado"}
+                  {displayEmail}
                 </p>
                 <p className="text-[#94a3b8] text-xs ml-8 mt-1">
                   El email no se puede modificar
@@ -98,9 +284,21 @@ export default function PerfilPage() {
                   <span className="material-symbols-outlined text-xl">
                     call
                   </span>
-                  <label className="text-sm font-medium">Teléfono</label>
+                  <label className="text-sm font-medium">Telefono</label>
                 </div>
-                <p className="text-[#94a3b8] ml-8">No especificado</p>
+                {isEditing ? (
+                  <input
+                    type="tel"
+                    value={editTelefono}
+                    onChange={(e) => setEditTelefono(e.target.value)}
+                    className="ml-8 w-[calc(100%-2rem)] px-3 py-2 border border-[#e2e8f0] rounded-lg text-secondary focus:outline-none focus:border-primary"
+                    placeholder="+52 123 456 7890"
+                  />
+                ) : (
+                  <p className={`ml-8 ${displayTelefono ? "text-secondary font-medium" : "text-[#94a3b8]"}`}>
+                    {displayTelefono || "No especificado"}
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -108,7 +306,7 @@ export default function PerfilPage() {
 
         {/* Right Column - Stats & Activity */}
         <div className="flex flex-col gap-6">
-          {/* Estadísticas */}
+          {/* Estadisticas */}
           <div className="bg-white rounded-[10px] border border-[#ededed] p-6">
             <div className="flex items-center gap-2 mb-6">
               <span className="bg-secondary rounded-full w-10 h-10 flex items-center justify-center">
@@ -117,33 +315,41 @@ export default function PerfilPage() {
                 </span>
               </span>
               <h2 className="font-barlow font-bold text-secondary text-lg">
-                ESTADÍSTICAS
+                ESTADISTICAS
               </h2>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               {/* Reservas Totales */}
               <div className="bg-[#f8fafc] rounded-lg p-4 text-center">
-                <p className="font-bold text-secondary text-3xl mb-1">5</p>
+                <p className="font-bold text-secondary text-3xl mb-1">
+                  {stats.total}
+                </p>
                 <p className="text-[#64748b] text-sm">Reservas Totales</p>
               </div>
 
               {/* Completadas */}
               <div className="bg-[#f8fafc] rounded-lg p-4 text-center">
-                <p className="font-bold text-secondary text-3xl mb-1">5</p>
+                <p className="font-bold text-secondary text-3xl mb-1">
+                  {stats.completed}
+                </p>
                 <p className="text-[#64748b] text-sm">Completadas</p>
               </div>
 
-              {/* Canceladas */}
-              <div className="bg-[#f8fafc] rounded-lg p-4 text-center">
-                <p className="font-bold text-secondary text-3xl mb-1">2</p>
-                <p className="text-[#64748b] text-sm">Canceladas</p>
+              {/* Proximas */}
+              <div className="bg-[#dcfce7] rounded-lg p-4 text-center">
+                <p className="font-bold text-secondary text-3xl mb-1">
+                  {stats.upcoming}
+                </p>
+                <p className="text-[#64748b] text-sm">Proximas</p>
               </div>
 
-              {/* Partidos */}
-              <div className="bg-[#dcfce7] rounded-lg p-4 text-center">
-                <p className="font-bold text-secondary text-3xl mb-1">5</p>
-                <p className="text-[#64748b] text-sm">Partidos</p>
+              {/* Partidos Jugados */}
+              <div className="bg-[#f8fafc] rounded-lg p-4 text-center">
+                <p className="font-bold text-secondary text-3xl mb-1">
+                  {stats.completed}
+                </p>
+                <p className="text-[#64748b] text-sm">Partidos Jugados</p>
               </div>
             </div>
           </div>
@@ -159,72 +365,43 @@ export default function PerfilPage() {
               </h2>
             </div>
 
-            <div className="space-y-4">
-              {/* Reserva 1 */}
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="font-semibold text-secondary text-sm">
-                    Reserva
-                  </p>
-                  <p className="text-[#64748b] text-xs">26 ene 2026</p>
-                </div>
-                <span className="bg-primary text-secondary text-xs font-semibold px-3 py-1 rounded-md">
-                  Confirmada
+            {activity.length === 0 ? (
+              <div className="text-center py-6">
+                <span className="material-symbols-outlined text-4xl text-[#cbd5e1] mb-2 block">
+                  event_busy
                 </span>
+                <p className="text-[#64748b] text-sm">
+                  No hay actividad reciente
+                </p>
               </div>
-
-              {/* Reserva 2 */}
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="font-semibold text-secondary text-sm">
-                    Reserva
-                  </p>
-                  <p className="text-[#64748b] text-xs">30 ene 2026</p>
-                </div>
-                <span className="bg-white text-secondary border-2 border-primary text-xs font-semibold px-3 py-1 rounded-md">
-                  Cancelada
-                </span>
+            ) : (
+              <div className="space-y-4">
+                {activity.map((item) => (
+                  <div
+                    key={item.idReservacion}
+                    className="flex justify-between items-start"
+                  >
+                    <div>
+                      <p className="font-semibold text-secondary text-sm">
+                        {item.cancha}
+                      </p>
+                      <p className="text-[#64748b] text-xs">
+                        {formatShortDate(item.fecha)} · {item.hora_inicio.substring(0, 5)}
+                      </p>
+                    </div>
+                    <span
+                      className={`text-xs font-semibold px-3 py-1 rounded-md ${
+                        item.status === "upcoming"
+                          ? "bg-primary text-secondary"
+                          : "bg-[#f1f5f9] text-[#64748b]"
+                      }`}
+                    >
+                      {item.status === "upcoming" ? "Confirmada" : "Completada"}
+                    </span>
+                  </div>
+                ))}
               </div>
-
-              {/* Reserva 3 */}
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="font-semibold text-secondary text-sm">
-                    Reserva
-                  </p>
-                  <p className="text-[#64748b] text-xs">29 ene 2026</p>
-                </div>
-                <span className="bg-white text-secondary border-2 border-primary text-xs font-semibold px-3 py-1 rounded-md">
-                  Cancelada
-                </span>
-              </div>
-
-              {/* Reserva 4 */}
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="font-semibold text-secondary text-sm">
-                    Reserva
-                  </p>
-                  <p className="text-[#64748b] text-xs">27 ene 2026</p>
-                </div>
-                <span className="bg-primary text-secondary text-xs font-semibold px-3 py-1 rounded-md">
-                  Confirmada
-                </span>
-              </div>
-
-              {/* Reserva 5 */}
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="font-semibold text-secondary text-sm">
-                    Reserva
-                  </p>
-                  <p className="text-[#64748b] text-xs">26 ene 2026</p>
-                </div>
-                <span className="bg-primary text-secondary text-xs font-semibold px-3 py-1 rounded-md">
-                  Confirmada
-                </span>
-              </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
