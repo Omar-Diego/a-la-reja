@@ -87,55 +87,75 @@ router.post(
       });
     }
 
-    // Consulta de validación de disponibilidad
-    // Verificar si hay alguna reservación que se superponga
-    const validarSql = `
-    SELECT idReservacion FROM RESERVACIONES
-    WHERE fecha = ?
-    AND CANCHAS_idCancha = ?
-    AND (
-      hora_inicio < ?
-      AND hora_fin > ?
-    )
-    LIMIT 1
-  `;
+    // Usar transacción para prevenir race conditions
+    // Esto asegura que dos personas no puedan reservar el mismo horario simultáneamente
+    const connection = await pool.getConnection();
 
-    // Ejecutar verificación de disponibilidad
-    const [existentes] = await pool.query(validarSql, [
-      fecha,
-      idCancha,
-      hora_fin,
-      hora_inicio,
-    ]);
+    try {
+      await connection.beginTransaction();
 
-    // Si existe una reservación que se superpone, retornar error de conflicto
-    if (existentes.length > 0) {
-      return res.status(409).json({
-        error: "La cancha ya esta reservada en ese horario",
+      // Consulta de validación de disponibilidad con bloqueo de filas (FOR UPDATE)
+      // Esto bloquea las filas hasta que la transacción termine
+      const validarSql = `
+        SELECT idReservacion FROM RESERVACIONES
+        WHERE fecha = ?
+        AND CANCHAS_idCancha = ?
+        AND (
+          hora_inicio < ?
+          AND hora_fin > ?
+        )
+        LIMIT 1
+        FOR UPDATE
+      `;
+
+      // Ejecutar verificación de disponibilidad con bloqueo
+      const [existentes] = await connection.query(validarSql, [
+        fecha,
+        idCancha,
+        hora_fin,
+        hora_inicio,
+      ]);
+
+      // Si existe una reservación que se superpone, hacer rollback y retornar error
+      if (existentes.length > 0) {
+        await connection.rollback();
+        connection.release();
+        return res.status(409).json({
+          error: "La cancha ya esta reservada en ese horario",
+        });
+      }
+
+      // Insertar nueva reservación
+      const insertSql = `
+        INSERT INTO RESERVACIONES
+        (fecha, hora_inicio, hora_fin, USUARIOS_idUsuario, CANCHAS_idCancha)
+        VALUES (?, ?, ?, ?, ?)
+      `;
+
+      // Ejecutar consulta de inserción
+      const [result] = await connection.query(insertSql, [
+        fecha,
+        hora_inicio,
+        hora_fin,
+        idUsuario,
+        idCancha,
+      ]);
+
+      // Confirmar transacción
+      await connection.commit();
+      connection.release();
+
+      // Retornar respuesta de éxito
+      res.status(201).json({
+        message: "Reservacion creada exitosamente",
+        idReservacion: result.insertId,
       });
+    } catch (error) {
+      // En caso de error, hacer rollback
+      await connection.rollback();
+      connection.release();
+      throw error;
     }
-
-    // Insertar nueva reservación
-    const insertSql = `
-    INSERT INTO RESERVACIONES
-    (fecha, hora_inicio, hora_fin, USUARIOS_idUsuario, CANCHAS_idCancha)
-    VALUES (?, ?, ?, ?, ?)
-  `;
-
-    // Ejecutar consulta de inserción
-    const [result] = await pool.query(insertSql, [
-      fecha,
-      hora_inicio,
-      hora_fin,
-      idUsuario,
-      idCancha,
-    ]);
-
-    // Retornar respuesta de éxito
-    res.status(201).json({
-      message: "Reservacion creada exitosamente",
-      idReservacion: result.insertId,
-    });
   }),
 );
 
@@ -170,11 +190,11 @@ router.get(
         });
       }
 
-      // Consulta SQL para reservaciones filtradas
+      // Consulta SQL para reservaciones filtradas (para verificar disponibilidad)
       const sql = `
       SELECT idReservacion, hora_inicio, hora_fin
       FROM RESERVACIONES
-      WHERE fecha = ?
+      WHERE DATE_FORMAT(fecha, '%Y-%m-%d') = ?
       AND CANCHAS_idCancha = ?
       ORDER BY hora_inicio
     `;
@@ -184,8 +204,9 @@ router.get(
     }
 
     // Si no hay filtros, retornar todas las reservaciones con detalles
+    // Usar DATE_FORMAT para garantizar formato YYYY-MM-DD consistente
     const sql = `
-    SELECT r.idReservacion, r.fecha, r.hora_inicio, r.hora_fin,
+    SELECT r.idReservacion, DATE_FORMAT(r.fecha, '%Y-%m-%d') AS fecha, r.hora_inicio, r.hora_fin,
            u.nombre AS usuario,
            c.nombre AS cancha
     FROM RESERVACIONES r
@@ -221,8 +242,9 @@ router.get(
     const idUsuario = req.usuario.idUsuario;
 
     // Consulta SQL para obtener reservaciones del usuario
+    // Usar DATE_FORMAT para garantizar formato YYYY-MM-DD consistente
     const sql = `
-    SELECT r.idReservacion, r.fecha, r.hora_inicio, r.hora_fin,
+    SELECT r.idReservacion, DATE_FORMAT(r.fecha, '%Y-%m-%d') AS fecha, r.hora_inicio, r.hora_fin,
            c.nombre AS cancha, c.ubicacion
     FROM RESERVACIONES r
     JOIN CANCHAS c ON r.CANCHAS_idCancha = c.idCancha
@@ -262,8 +284,9 @@ router.get(
     }
 
     // Consulta SQL para obtener detalles de reservación
+    // Usar DATE_FORMAT para garantizar formato YYYY-MM-DD consistente
     const sql = `
-    SELECT r.idReservacion, r.fecha, r.hora_inicio, r.hora_fin,
+    SELECT r.idReservacion, DATE_FORMAT(r.fecha, '%Y-%m-%d') AS fecha, r.hora_inicio, r.hora_fin,
            u.nombre AS usuario,
            c.nombre AS cancha, c.ubicacion, c.precio_por_hora
     FROM RESERVACIONES r

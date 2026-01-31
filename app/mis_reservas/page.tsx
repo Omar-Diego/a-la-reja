@@ -6,7 +6,7 @@ import Button from "@/app/components/ui/button";
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { API_URL } from "@/app/lib/constants";
-import { Reservation, formatShortDate, formatDateDisplay } from "@/app/lib/types";
+import { Reservation, formatShortDate, formatDateDisplay, isReservationUpcoming } from "@/app/lib/types";
 
 function MisReservasContent() {
   const { isLoading, getAuthHeader } = useAuth();
@@ -101,14 +101,11 @@ function MisReservasContent() {
     );
   }
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const upcomingReservations = reservations.filter(
-    (r) => new Date(r.fecha) >= today,
+  const upcomingReservations = reservations.filter((r) =>
+    isReservationUpcoming(r.fecha),
   );
   const pastReservations = reservations.filter(
-    (r) => new Date(r.fecha) < today,
+    (r) => !isReservationUpcoming(r.fecha),
   );
 
   return (

@@ -45,25 +45,63 @@ export function formatDateToISO(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-export function formatDateDisplay(dateStr: string): string {
-  const date = new Date(dateStr + "T00:00:00");
-  const options: Intl.DateTimeFormatOptions = {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  };
-  return date.toLocaleDateString("es-ES", options);
+export function parseDateString(dateStr: string | Date): string {
+  if (!dateStr) return "";
+
+  if (dateStr instanceof Date) {
+    return formatDateToISO(dateStr);
+  }
+
+  const str = String(dateStr);
+
+  if (str.includes("T")) {
+    return str.split("T")[0];
+  }
+
+  if (str.includes(" ")) {
+    return str.split(" ")[0];
+  }
+
+  return str;
 }
 
-export function formatShortDate(dateStr: string): string {
-  const date = new Date(dateStr + "T00:00:00");
-  const options: Intl.DateTimeFormatOptions = {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-  };
-  return date.toLocaleDateString("es-ES", options);
+export function formatDateDisplay(dateStr: string | Date): string {
+  const normalizedDate = parseDateString(dateStr);
+  if (!normalizedDate) return "Fecha no disponible";
+
+  try {
+    const date = new Date(normalizedDate + "T12:00:00");
+    if (isNaN(date.getTime())) return "Fecha invalida";
+
+    const options: Intl.DateTimeFormatOptions = {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    };
+    return date.toLocaleDateString("es-ES", options);
+  } catch {
+    return "Fecha invalida";
+  }
+}
+
+export function formatShortDate(dateStr: string | Date): string {
+  const normalizedDate = parseDateString(dateStr);
+  if (!normalizedDate) return "Fecha no disponible";
+
+  try {
+    const date = new Date(normalizedDate + "T12:00:00");
+    if (isNaN(date.getTime())) return "Fecha invalida";
+
+    const options: Intl.DateTimeFormatOptions = {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+    };
+    return date.toLocaleDateString("es-ES", options);
+  } catch {
+    return "Fecha invalida";
+  }
 }
 
 export function calculateEndTime(
@@ -94,6 +132,17 @@ export function isDateInPast(date: Date): boolean {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   return date < today;
+}
+
+export function isReservationUpcoming(fecha: string | Date): boolean {
+  const normalizedDate = parseDateString(fecha);
+  if (!normalizedDate) return false;
+
+  const reservationDate = new Date(normalizedDate + "T23:59:59");
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  return reservationDate >= today;
 }
 
 export function isTimeInPastForToday(time: string, date: Date): boolean {

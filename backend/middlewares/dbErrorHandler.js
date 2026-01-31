@@ -110,21 +110,31 @@ function getClientResponse(error) {
     };
   }
 
-  // Errores de restricción de clave foránea - 400 Solicitud Incorrecta
+  // Errores de restricción de clave foránea al insertar (referencia no existe)
   if (
     errno === 1216 ||
-    errno === 1217 ||
-    errno === 1451 ||
     errno === 1452 ||
     code === "ER_NO_REFERENCED_ROW" ||
+    code === "ER_NO_REFERENCED_ROW_2"
+  ) {
+    return {
+      statusCode: 400,
+      message:
+        "No se puede completar la operacion. La cancha o usuario no existe.",
+    };
+  }
+
+  // Errores de restricción de clave foránea al eliminar (tiene referencias)
+  if (
+    errno === 1217 ||
+    errno === 1451 ||
     code === "ER_ROW_IS_REFERENCED" ||
-    code === "ER_NO_REFERENCED_ROW_2" ||
     code === "ER_ROW_IS_REFERENCED_2"
   ) {
     return {
       statusCode: 400,
       message:
-        "No se puede completar la operacion debido a referencias existentes.",
+        "No se puede eliminar porque tiene reservaciones asociadas.",
     };
   }
 

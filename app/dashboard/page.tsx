@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect } from "react";
 import { API_URL } from "@/app/lib/constants";
-import { Reservation, formatShortDate } from "@/app/lib/types";
+import { Reservation, formatShortDate, isReservationUpcoming } from "@/app/lib/types";
 
 const COURTS = [
   {
@@ -53,9 +53,7 @@ export default function DashboardPage() {
         if (!response.ok) throw new Error("Error al cargar reservaciones");
         const data: Reservation[] = await response.json();
 
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const upcoming = data.filter((r) => new Date(r.fecha) >= today);
+        const upcoming = data.filter((r) => isReservationUpcoming(r.fecha));
         setUpcomingReservations(upcoming.slice(0, 3)); // Show max 3
       } catch {
         setUpcomingReservations([]);
