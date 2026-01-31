@@ -1,5 +1,7 @@
 # 🏟️ A La Reja - Sistema de Reservación de Canchas de Pádel
 
+> **⚠️ Nota Importante:** La mayoría de la aplicación ya cuenta con funcionalidad completa, incluyendo gestión de usuarios, reservación de canchas, autenticación segura, historial de reservas y más. Sin embargo, **los pagos en línea aún no están implementados**. Las reservaciones se confirman pero el procesamiento de pagos está pendiente de desarrollo.
+
 <div align="center">
 
 [![🚀 Ver Aplicación en Producción](https://img.shields.io/badge/🚀-Ver_Aplicación_en_Producción-10b981?style=for-the-badge&logo=rocket)](https://a-la-reja.vercel.app/)
