@@ -42,6 +42,8 @@ export default function PerfilPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
   useEffect(() => {
     async function fetchProfileData() {
       const headers = getAuthHeader();
@@ -51,36 +53,48 @@ export default function PerfilPage() {
       }
 
       try {
-        const [profileRes, statsRes, activityRes] = await Promise.all([
-          fetch(`${API_URL}/api/usuarios/me`, {
-            headers: { ...headers, "Content-Type": "application/json" },
-          }),
-          fetch(`${API_URL}/api/usuarios/me/stats`, {
-            headers: { ...headers, "Content-Type": "application/json" },
-          }),
-          fetch(`${API_URL}/api/usuarios/me/activity`, {
-            headers: { ...headers, "Content-Type": "application/json" },
-          }),
-        ]);
+        // Fetch profile data
+        const profileRes = await fetch(`${API_URL}/api/usuarios/me`, {
+          headers: { ...headers, "Content-Type": "application/json" },
+        });
 
         if (profileRes.ok) {
           const profileData = await profileRes.json();
           setProfile(profileData);
           setEditNombre(profileData.nombre);
           setEditTelefono(profileData.telefono || "");
+        } else {
+          const errorData = await profileRes.json().catch(() => ({}));
+          console.error("Profile fetch error:", profileRes.status, errorData);
+          setFetchError(`Error al cargar perfil: ${errorData.error || profileRes.statusText}`);
         }
+
+        // Fetch stats
+        const statsRes = await fetch(`${API_URL}/api/usuarios/me/stats`, {
+          headers: { ...headers, "Content-Type": "application/json" },
+        });
 
         if (statsRes.ok) {
           const statsData = await statsRes.json();
           setStats(statsData);
+        } else {
+          console.error("Stats fetch error:", statsRes.status);
         }
+
+        // Fetch activity
+        const activityRes = await fetch(`${API_URL}/api/usuarios/me/activity`, {
+          headers: { ...headers, "Content-Type": "application/json" },
+        });
 
         if (activityRes.ok) {
           const activityData = await activityRes.json();
           setActivity(activityData);
+        } else {
+          console.error("Activity fetch error:", activityRes.status);
         }
-      } catch {
-        // Silent fail - use defaults
+      } catch (err) {
+        console.error("Profile data fetch error:", err);
+        setFetchError("Error de conexion al servidor");
       } finally {
         setDataLoading(false);
       }
@@ -158,6 +172,16 @@ export default function PerfilPage() {
       <h1 className="font-barlow font-bold text-secondary text-[32px] uppercase mb-8">
         MI PERFIL
       </h1>
+
+      {/* Fetch Error Display */}
+      {fetchError && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-700 text-sm px-4 py-3 rounded-lg mb-6">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-lg">warning</span>
+            <span>{fetchError}</span>
+          </div>
+        </div>
+      )}
 
       {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
