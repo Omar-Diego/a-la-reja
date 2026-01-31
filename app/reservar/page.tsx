@@ -4,6 +4,30 @@ import { useAuth } from "@/app/context/AuthContext";
 import Link from "next/link";
 import Image from "next/image";
 
+const COURTS = [
+  {
+    id: 1,
+    slug: "pista-1",
+    nombre: "Pista 1",
+    descripcion: "Cancha central con iluminacion LED profesional",
+    precio: 25,
+  },
+  {
+    id: 2,
+    slug: "pista-2",
+    nombre: "Pista 2",
+    descripcion: "Cancha exterior con cesped artificial premium",
+    precio: 20,
+  },
+  {
+    id: 3,
+    slug: "pista-central",
+    nombre: "Pista Central",
+    descripcion: "Nuestra cancha estrella para torneos y eventos",
+    precio: 30,
+  },
+];
+
 export default function ReservarPage() {
   const { isLoading } = useAuth();
 
@@ -51,83 +75,33 @@ export default function ReservarPage() {
 
       {/* Court Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Pista 1 */}
-        <Link
-          href="/reservar/pista-1"
-          className="bg-white rounded-[10px] overflow-hidden hover:shadow-lg hover:border hover:border-primary transition-shadow border border-[#ededed]"
-        >
-          <div className="relative w-full h-50">
-            <Image
-              src="/images/Hero.jpg"
-              alt="Pista 1"
-              fill
-              className="object-cover"
-            />
-          </div>
-          <div className="p-5">
-            <h3 className="font-barlow font-bold text-secondary text-lg mb-2">
-              PISTA 1
-            </h3>
-            <p className="text-[#64748b] text-sm mb-4">
-              Cancha central con iluminación LED profesional
-            </p>
-            <div className="flex justify-between items-center">
-              <p className="font-bold text-secondary text-xl">€25/h</p>
+        {COURTS.map((court) => (
+          <Link
+            key={court.id}
+            href={`/reservar/${court.slug}`}
+            className="bg-white rounded-[10px] overflow-hidden hover:shadow-lg hover:border hover:border-primary transition-shadow border border-[#ededed]"
+          >
+            <div className="relative w-full h-50">
+              <Image
+                src="/images/Hero.jpg"
+                alt={court.nombre}
+                fill
+                className="object-cover"
+              />
             </div>
-          </div>
-        </Link>
-
-        {/* Pista 2 */}
-        <Link
-          href="/reservar/pista-2"
-          className="bg-white rounded-[10px] overflow-hidden hover:shadow-lg hover:border hover:border-primary transition-shadow border border-[#ededed]"
-        >
-          <div className="relative w-full h-50">
-            <Image
-              src="/images/Hero.jpg"
-              alt="Pista 2"
-              fill
-              className="object-cover"
-            />
-          </div>
-          <div className="p-5">
-            <h3 className="font-barlow font-bold text-secondary text-lg mb-2">
-              PISTA 2
-            </h3>
-            <p className="text-[#64748b] text-sm mb-4">
-              Cancha exterior con césped artificial premium
-            </p>
-            <div className="flex justify-between items-center">
-              <p className="font-bold text-secondary text-xl">€29/h</p>
+            <div className="p-5">
+              <h3 className="font-barlow font-bold text-secondary text-lg mb-2">
+                {court.nombre.toUpperCase()}
+              </h3>
+              <p className="text-[#64748b] text-sm mb-4">{court.descripcion}</p>
+              <div className="flex justify-between items-center">
+                <p className="font-bold text-secondary text-xl">
+                  ${court.precio}/h
+                </p>
+              </div>
             </div>
-          </div>
-        </Link>
-
-        {/* Pista Central */}
-        <Link
-          href="/reservar/pista-central"
-          className="bg-white rounded-[10px] overflow-hidden hover:shadow-lg hover:border hover:border-primary transition-shadow border border-[#ededed]"
-        >
-          <div className="relative w-full h-50">
-            <Image
-              src="/images/Hero.jpg"
-              alt="Pista Central"
-              fill
-              className="object-cover"
-            />
-          </div>
-          <div className="p-5">
-            <h3 className="font-barlow font-bold text-secondary text-lg mb-2">
-              PISTA CENTRAL
-            </h3>
-            <p className="text-[#64748b] text-sm mb-4">
-              Nuestra cancha estrella para torneos y eventos
-            </p>
-            <div className="flex justify-between items-center">
-              <p className="font-bold text-secondary text-xl">€35/h</p>
-            </div>
-          </div>
-        </Link>
+          </Link>
+        ))}
       </div>
     </div>
   );

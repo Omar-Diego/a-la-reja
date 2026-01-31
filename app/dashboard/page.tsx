@@ -3,9 +3,68 @@
 import { useAuth } from "@/app/context/AuthContext";
 import Link from "next/link";
 import Image from "next/image";
+import { useState, useEffect } from "react";
+import { API_URL } from "@/app/lib/constants";
+import { Reservation, formatShortDate } from "@/app/lib/types";
+
+const COURTS = [
+  {
+    id: 1,
+    slug: "pista-1",
+    nombre: "Pista 1",
+    precio: 25,
+  },
+  {
+    id: 2,
+    slug: "pista-2",
+    nombre: "Pista 2",
+    precio: 20,
+  },
+  {
+    id: 3,
+    slug: "pista-central",
+    nombre: "Pista Central",
+    precio: 30,
+  },
+];
 
 export default function DashboardPage() {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, getAuthHeader } = useAuth();
+  const [upcomingReservations, setUpcomingReservations] = useState<
+    Reservation[]
+  >([]);
+  const [reservationsLoading, setReservationsLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchReservations() {
+      const headers = getAuthHeader();
+      if (!headers.Authorization) {
+        setReservationsLoading(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_URL}/api/reservaciones/usuario`, {
+          headers: {
+            ...headers,
+            "Content-Type": "application/json",
+          },
+        });
+        if (!response.ok) throw new Error("Error al cargar reservaciones");
+        const data: Reservation[] = await response.json();
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const upcoming = data.filter((r) => new Date(r.fecha) >= today);
+        setUpcomingReservations(upcoming.slice(0, 3)); // Show max 3
+      } catch {
+        setUpcomingReservations([]);
+      } finally {
+        setReservationsLoading(false);
+      }
+    }
+    fetchReservations();
+  }, [getAuthHeader]);
 
   if (isLoading) {
     return (
@@ -19,17 +78,17 @@ export default function DashboardPage() {
     <div className="bg-[#f8fafc] flex flex-col px-8 md:px-20 lg:px-36 py-16">
       {/* Hero Section */}
       <div className="flex flex-col gap-7 w-full mb-16">
-        {/* Título y texto */}
+        {/* Titulo y texto */}
         <div className="flex flex-col gap-5">
           <h1 className="font-barlow font-bold text-secondary text-[40px] uppercase">
             ¡HOLA, {user?.nombre || "USUARIO"}!
           </h1>
           <p className="font-inter text-[#857fa0] text-[18px]">
-            ¿Listo para tu próximo partido?
+            ¿Listo para tu proximo partido?
           </p>
         </div>
 
-        {/* Tarjetas de acción */}
+        {/* Tarjetas de accion */}
         <div className="flex gap-8 flex-wrap">
           {/* Reservar - Tarjeta destacada */}
           <Link
@@ -57,7 +116,7 @@ export default function DashboardPage() {
             </div>
           </Link>
 
-          {/* Partidos */}
+          {/* Perfil */}
           <Link
             href="/perfil"
             className="bg-white border border-[#ededed] flex items-center justify-center rounded-[15px] h-26.5 flex-1 min-w-75 hover:bg-primary transition-colors group"
@@ -75,12 +134,12 @@ export default function DashboardPage() {
       {/* Content Sections */}
       <div>
         <div className="flex flex-col lg:flex-row gap-15">
-          {/* Left Column: Próximas Reservas */}
+          {/* Left Column: Proximas Reservas */}
           <div className="flex-1 min-w-3/5">
             {/* Header */}
             <div className="flex justify-between items-center mb-7">
               <h2 className="font-barlow font-bold text-secondary text-xl">
-                PRÓXIMAS RESERVAS
+                PROXIMAS RESERVAS
               </h2>
               <Link
                 href="/mis_reservas"
@@ -90,103 +149,98 @@ export default function DashboardPage() {
               </Link>
             </div>
 
-            {/* Reservation Card */}
-            <div className="bg-white border border-[#ededed] rounded-[10px] p-3 flex gap-2.5 items-center hover:shadow-md hover:border hover:border-primary transition-shadow">
-              <div className="w-18.5 h-18.5 flex items-center justify-center bg-secondary rounded-lg shrink-0">
-                <p className="font-barlow font-bold text-primary text-xl">
-                  14:00
+            {/* Reservation Cards */}
+            {reservationsLoading ? (
+              <div className="bg-white border border-[#ededed] rounded-[10px] p-8 flex items-center justify-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+              </div>
+            ) : upcomingReservations.length === 0 ? (
+              <div className="bg-white border border-[#ededed] rounded-[10px] p-8 text-center">
+                <span className="material-symbols-outlined text-4xl text-gray-300 mb-2 block">
+                  calendar_month
+                </span>
+                <p className="text-[#64748b] text-sm mb-4">
+                  No tienes reservaciones proximas
                 </p>
+                <Link
+                  href="/reservar"
+                  className="text-primary font-semibold text-sm hover:underline"
+                >
+                  Hacer una reserva
+                </Link>
               </div>
-              <div className="flex-1 min-w-0 flex flex-col gap-1">
-                <p className="font-semibold text-sm text-black">Pista 1</p>
-                <p className="text-sm text-[#64748b] flex items-center gap-1">
-                  <span className="material-symbols-outlined text-sm">
-                    calendar_month
-                  </span>
-                  lun, 26 ene
-                </p>
+            ) : (
+              <div className="space-y-3">
+                {upcomingReservations.map((reserva) => (
+                  <div
+                    key={reserva.idReservacion}
+                    className="bg-white border border-[#ededed] rounded-[10px] p-3 flex gap-2.5 items-center hover:shadow-md hover:border hover:border-primary transition-shadow"
+                  >
+                    <div className="w-18.5 h-18.5 flex items-center justify-center bg-secondary rounded-lg shrink-0">
+                      <p className="font-barlow font-bold text-primary text-xl">
+                        {reserva.hora_inicio.substring(0, 5)}
+                      </p>
+                    </div>
+                    <div className="flex-1 min-w-0 flex flex-col gap-1">
+                      <p className="font-semibold text-sm text-black">
+                        {reserva.cancha}
+                      </p>
+                      <p className="text-sm text-[#64748b] flex items-center gap-1">
+                        <span className="material-symbols-outlined text-sm">
+                          calendar_month
+                        </span>
+                        {formatShortDate(reserva.fecha)}
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-sm text-[#64748b]">
+                        {reserva.hora_inicio.substring(0, 5)} -{" "}
+                        {reserva.hora_fin.substring(0, 5)}
+                      </p>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div className="text-right shrink-0">
-                <p className="text-sm text-[#64748b]">2h · €50</p>
-              </div>
-            </div>
+            )}
           </div>
 
-          {/* Right Column: Partidos Abiertos & Canchas */}
+          {/* Right Column: Nuestras Canchas */}
           <div className="flex-1 min-w-0 flex flex-col gap-7">
             {/* Nuestras Canchas */}
             <div>
               <h2 className="font-barlow font-bold text-secondary text-xl mb-7">
                 NUESTRAS CANCHAS
               </h2>
+
               <div className="flex flex-col gap-4">
-                {/* Pista 1 */}
-                <div className="bg-white border border-[#ededed] rounded-[10px] p-3 flex gap-2.5 items-center">
-                  <div className="w-18.5 h-18.5 bg-gray-200 rounded-xl overflow-hidden shrink-0">
-                    <Image
-                      src="/images/Hero.jpg"
-                      alt="Pista 1"
-                      width={74}
-                      height={74}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div className="flex-1 flex flex-col gap-1">
-                    <p className="font-semibold text-sm text-black">Pista 1</p>
-                    <p className="font-semibold text-sm text-[#7e7e7e]">
-                      $25/hora
-                    </p>
-                    <div className="bg-[#dcfce7] px-4 py-1 rounded-full inline-block w-fit">
-                      <p className="text-[#15803d] text-sm">Disponible</p>
+                {COURTS.map((court) => (
+                  <Link
+                    key={court.id}
+                    href={`/reservar/${court.slug}`}
+                    className="bg-white border border-[#ededed] rounded-[10px] p-3 flex gap-2.5 items-center hover:shadow-md hover:border-primary transition-all"
+                  >
+                    <div className="w-18.5 h-18.5 bg-gray-200 rounded-xl overflow-hidden shrink-0">
+                      <Image
+                        src="/images/Hero.jpg"
+                        alt={court.nombre}
+                        width={74}
+                        height={74}
+                        className="w-full h-full object-cover"
+                      />
                     </div>
-                  </div>
-                </div>
-
-                {/* Pista 2 */}
-                <div className="bg-white border border-[#ededed] rounded-[10px] p-3 flex gap-2.5 items-center">
-                  <div className="w-18.5 h-18.5 bg-gray-200 rounded-xl overflow-hidden shrink-0">
-                    <Image
-                      src="/images/Hero.jpg"
-                      alt="Pista 2"
-                      width={74}
-                      height={74}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div className="flex-1 flex flex-col gap-1">
-                    <p className="font-semibold text-sm text-black">Pista 2</p>
-                    <p className="font-semibold text-sm text-[#7e7e7e]">
-                      $20/hora
-                    </p>
-                    <div className="bg-[#dcfce7] px-4 py-1 rounded-full inline-block w-fit">
-                      <p className="text-[#15803d] text-sm">Disponible</p>
+                    <div className="flex-1 flex flex-col gap-1">
+                      <p className="font-semibold text-sm text-black">
+                        {court.nombre}
+                      </p>
+                      <p className="font-semibold text-sm text-[#7e7e7e]">
+                        ${court.precio}/hora
+                      </p>
+                      <div className="bg-[#dcfce7] px-4 py-1 rounded-full inline-block w-fit">
+                        <p className="text-[#15803d] text-sm">Disponible</p>
+                      </div>
                     </div>
-                  </div>
-                </div>
-
-                {/* Pista Central */}
-                <div className="bg-white border border-[#ededed] rounded-[10px] p-3 flex gap-2.5 items-center">
-                  <div className="w-18.5 h-18.5 bg-gray-200 rounded-xl overflow-hidden shrink-0">
-                    <Image
-                      src="/images/Hero.jpg"
-                      alt="Pista Central"
-                      width={74}
-                      height={74}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div className="flex-1 flex flex-col gap-1">
-                    <p className="font-semibold text-sm text-black">
-                      Pista Central
-                    </p>
-                    <p className="font-semibold text-sm text-[#7e7e7e]">
-                      $30/hora
-                    </p>
-                    <div className="bg-[#dcfce7] px-4 py-1 rounded-full inline-block w-fit">
-                      <p className="text-[#15803d] text-sm">Disponible</p>
-                    </div>
-                  </div>
-                </div>
+                  </Link>
+                ))}
               </div>
             </div>
           </div>
