@@ -80,9 +80,13 @@ const canchasRoutes = require("./routes/canchas");
  * Configuración de Rutas
  * Todas las rutas de la API tienen el prefijo /api
  */
+console.log("[Server] Registrando rutas de usuarios...");
 app.use("/api", usuariosRoutes);
+console.log("[Server] Registrando rutas de reservaciones...");
 app.use("/api", reservacionesRoutes);
+console.log("[Server] Registrando rutas de canchas...");
 app.use("/api", canchasRoutes);
+console.log("[Server] Todas las rutas registradas");
 
 /**
  * Endpoint de Verificación de Salud
@@ -114,6 +118,7 @@ app.get("/health", async (req, res) => {
  * Captura peticiones a rutas no definidas
  */
 app.use((req, res, next) => {
+  console.log(`[404] Ruta no encontrada: ${req.method} ${req.originalUrl}`);
   res.status(404).json({
     error: "Ruta no encontrada",
     path: req.originalUrl,

@@ -30,6 +30,17 @@ const { asyncHandler } = require("../middlewares/dbErrorHandler");
 // Importar middleware de autenticación JWT
 const auth = require("../middlewares/auth");
 
+// Log para verificar que el archivo se cargó
+console.log("[Routes] Usuarios routes loaded with profile endpoints");
+
+/**
+ * GET /api/usuarios/test
+ * Endpoint de prueba para verificar que las rutas están registradas
+ */
+router.get("/usuarios/test", (req, res) => {
+  res.json({ message: "Usuarios routes working", timestamp: new Date().toISOString() });
+});
+
 /**
  * POST /api/login
  *
