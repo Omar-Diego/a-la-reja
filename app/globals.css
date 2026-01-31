@@ -6,3 +6,22 @@
   --font-barlow: var(--font-barlow-condensed);
   --font-roboto: var(--font-roboto);
 }
+
+/* Mobile blocker - mostrar mensaje en móvil, ocultar contenido */
+.mobile-blocker {
+  display: none;
+}
+
+.desktop-content {
+  display: block;
+}
+
+@media (max-width: 768px) {
+  .mobile-blocker {
+    display: block;
+  }
+
+  .desktop-content {
+    display: none;
+  }
+}

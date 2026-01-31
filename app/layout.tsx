@@ -3,6 +3,7 @@ import { Barlow_Condensed, Roboto } from "next/font/google";
 import "./globals.css";
 import SessionProvider from "./components/providers/SessionProvider";
 import { AuthProvider } from "./context/AuthContext";
+import MobileBlocker from "./components/ui/MobileBlocker";
 
 const barlowCondensed = Barlow_Condensed({
   subsets: ["latin"],
@@ -41,7 +42,9 @@ export default function RootLayout({
       </head>
       <body className="antialiased">
         <SessionProvider>
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider>
+            <MobileBlocker>{children}</MobileBlocker>
+          </AuthProvider>
         </SessionProvider>
       </body>
     </html>
