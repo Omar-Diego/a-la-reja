@@ -1,3 +1,4 @@
+import Link from "next/link";
 import Badge from "../ui/badge";
 import Button from "../ui/button";
 
@@ -26,8 +27,12 @@ export default function Hero() {
         </div>
 
         <div className="flex flex-wrap gap-5 items-center">
-          <Button>EMPEZAR AHORA</Button>
-          <Button variant="inverted">CONOCE MAS</Button>
+          <Link href="/login">
+            <Button>EMPEZAR AHORA</Button>
+          </Link>
+          <Link href="#todo-lo-que-necesitas">
+            <Button variant="inverted">CONOCE MAS</Button>
+          </Link>
         </div>
 
         <div className="flex flex-wrap gap-8 md:gap-25 items-center mt-4">

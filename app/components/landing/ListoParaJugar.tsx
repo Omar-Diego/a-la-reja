@@ -1,3 +1,4 @@
+import Link from "next/link";
 import Button from "../ui/button";
 
 export default function ListoParaJugar() {
@@ -12,12 +13,14 @@ export default function ListoParaJugar() {
           </p>
         </div>
 
-        <Button>
-          CREA CUENTA GRATIS
-          <span className="material-symbols-outlined text-xl">
-            arrow_forward
-          </span>
-        </Button>
+        <Link href="/register">
+          <Button>
+            CREA CUENTA GRATIS
+            <span className="material-symbols-outlined text-xl">
+              arrow_forward
+            </span>
+          </Button>
+        </Link>
       </div>
     </section>
   );
