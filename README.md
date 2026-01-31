@@ -312,6 +312,260 @@ El `MobileBlocker` está integrado en el [`app/layout.tsx`](app/layout.tsx:46) y
 
 ---
 
+## ⚙️ Backend - Detalle Técnico
+
+### Descripción General
+
+El backend de **A La Reja** está construido con **Express.js** y proporciona una API RESTful completa para la gestión del sistema de reservaciones. El servidor está diseñado con enfoque en seguridad, rendimiento y escalabilidad.
+
+### Características Técnicas del Backend
+
+#### Pool de Conexiones a Base de Datos
+
+El backend utiliza **mysql2/promise** con un pool de conexiones configurado en [`backend/config/db.js`](backend/config/db.js):
+
+```javascript
+const poolConfig = {
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  port: parseInt(process.env.DB_PORT, 10) || 3306,
+  connectionLimit: 10, // Máximo de conexiones en el pool
+  queueLimit: 0, // Cola de conexiones ilimitada
+  waitForConnections: true, // Esperar conexión disponible
+  connectTimeout: 10000, // Timeout de 10 segundos
+  multipleStatements: false, // Deshabilitado por seguridad
+  timezone: "local",
+  charset: "utf8mb4",
+};
+```
+
+**Beneficios del pool de conexiones:**
+
+- Reutilización de conexiones para mejor rendimiento
+- Límite de conexiones para prevenir agotamiento de recursos
+- Cola de conexiones para manejar picos de tráfico
+- Manejo automático de conexiones caídas
+
+#### Middleware de Autenticación JWT
+
+El archivo [`backend/middlewares/auth.js`](backend/middlewares/auth.js) implementa verificación de tokens JWT:
+
+```javascript
+const jwt = require("jsonwebtoken");
+
+module.exports = (req, res, next) => {
+  const header = req.headers.authorization;
+  if (!header) {
+    return res.status(401).json({ error: "Token requerido" });
+  }
+
+  const token = header.split(" ")[1];
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.usuario = decoded;
+    next();
+  } catch (error) {
+    res.status(401).json({ error: "Token inválido" });
+  }
+};
+```
+
+**Características de seguridad:**
+
+- Verificación de token en cada solicitud protegida
+- Extracción de ID de usuario del token (no de la solicitud)
+- Manejo de tokens expirados o inválidos
+
+#### Manejo de Errores
+
+El middleware [`backend/middlewares/dbErrorHandler.js`](backend/middlewares/dbErrorHandler.js) proporciona manejo asíncrono de errores:
+
+```javascript
+const asyncHandler = (fn) => (req, res, next) => {
+  Promise.resolve(fn(req, res, next)).catch(next);
+};
+```
+
+### Estructura de Rutas del Backend
+
+```
+backend/
+├── index.js                    # Punto de entrada + configuración Express
+├── config/
+│   └── db.js                  # Pool de conexiones MySQL
+├── middlewares/
+│   ├── auth.js                # Verificación JWT
+│   └── dbErrorHandler.js      # Manejo de errores asíncronos
+└── routes/
+    ├── usuarios.js            # Endpoints de autenticación y usuarios
+    ├── canchas.js             # Endpoints de gestión de canchas
+    └── reservaciones.js       # Endpoints CRUD de reservaciones
+```
+
+### Configuración del Servidor Express
+
+**Puerto y Entorno:**
+
+- Puerto configurable vía `PORT` (default: 3001)
+- Modo de entorno: `production` o `development`
+
+**Middleware Principal:**
+
+```javascript
+// CORS configurado para permitir origen del frontend
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL,
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true,
+  }),
+);
+
+// Limitación de tamaño de cuerpo JSON (10kb)
+app.use(express.json({ limit: "10kb" }));
+
+// Logging en desarrollo
+if (process.env.NODE_ENV !== "production") {
+  app.use((req, res, next) => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    next();
+  });
+}
+```
+
+### Transacciones y Prevención de Race Conditions
+
+El endpoint de creación de reservaciones implementa **transacciones SQL** con bloqueo de filas:
+
+```javascript
+// Obtener conexión del pool
+const connection = await pool.getConnection();
+
+try {
+  await connection.beginTransaction();
+
+  // Consulta con FOR UPDATE (bloquea las filas)
+  const validarSql = `
+    SELECT idReservacion FROM RESERVACIONES
+    WHERE fecha = ? AND CANCHAS_idCancha = ?
+    AND (hora_inicio < ? AND hora_fin > ?)
+    LIMIT 1 FOR UPDATE
+  `;
+
+  const [existentes] = await connection.query(validarSql, [
+    fecha, idCancha, hora_fin, hora_inicio
+  ]);
+
+  if (existentes.length > 0) {
+    await connection.rollback();
+    return res.status(409).json({
+      error: "La cancha ya esta reservada en ese horario",
+    });
+  }
+
+  // Insertar reservación
+  const insertSql = `INSERT INTO RESERVACIONES ...`;
+  const [result] = await connection.query(insertSql, [...]);
+
+  await connection.commit();
+  res.status(201).json({ message: "Reservacion creada", idReservacion: result.insertId });
+} catch (error) {
+  await connection.rollback();
+  throw error;
+} finally {
+  connection.release();
+}
+```
+
+### Validaciones de Entrada
+
+Todas las rutas implementan validación exhaustiva:
+
+**Validación de fecha:**
+
+```javascript
+const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+if (!dateRegex.test(fecha)) {
+  return res
+    .status(400)
+    .json({ error: "Formato de fecha invalido. Use YYYY-MM-DD" });
+}
+```
+
+**Validación de hora:**
+
+```javascript
+const timeRegex = /^\d{2}:\d{2}(:\d{2})?$/;
+if (!timeRegex.test(hora_inicio) || !timeRegex.test(hora_fin)) {
+  return res
+    .status(400)
+    .json({ error: "Formato de hora invalido. Use HH:MM o HH:MM:SS" });
+}
+```
+
+**Validación de lógica de negocio:**
+
+```javascript
+if (hora_inicio >= hora_fin) {
+  return res
+    .status(400)
+    .json({ error: "La hora de fin debe ser posterior a la hora de inicio" });
+}
+```
+
+### Salud del Servidor
+
+Endpoint de verificación de salud:
+
+```javascript
+app.get("/health", async (req, res) => {
+  try {
+    const connection = await pool.getConnection();
+    await connection.query("SELECT 1");
+    connection.release();
+    res.json({
+      status: "healthy",
+      timestamp: new Date().toISOString(),
+      database: "connected",
+    });
+  } catch (error) {
+    res.status(503).json({
+      status: "unhealthy",
+      timestamp: new Date().toISOString(),
+      database: "disconnected",
+    });
+  }
+});
+```
+
+### Apagado Graceful
+
+El servidor implementa manejo de señales para cierre limpio:
+
+```javascript
+function setupGracefulShutdown(server) {
+  const shutdown = async (signal) => {
+    console.log(`[Server] Recibido ${signal}. Iniciando apagado...`);
+    server.close(async () => {
+      await closePool();
+      process.exit(0);
+    });
+
+    // Forzar cierre después de 10 segundos
+    setTimeout(() => {
+      process.exit(1);
+    }, 10000);
+  };
+
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
+  process.on("SIGINT", () => shutdown("SIGINT"));
+}
+```
+
+---
+
 ## 🚀 Instalación y Configuración
 
 ### Prerrequisitos
