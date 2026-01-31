@@ -30,9 +30,23 @@ const PORT = process.env.PORT || 3000;
 
 // Habilitar CORS para peticiones de origen cruzado
 // SEGURIDAD: Configurar orígenes específicos para producción
+const allowedOrigins = [
+  "https://a-la-reja.vercel.app",
+  "http://localhost:3000",
+  process.env.FRONTEND_URL,
+].filter(Boolean);
+
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    origin: function (origin, callback) {
+      if (!origin) {
+        return callback(null, true);
+      }
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error("Not allowed by CORS"));
+    },
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
@@ -156,6 +170,8 @@ async function startServer() {
       console.log(
         `[Server] Verificación de salud: http://localhost:${PORT}/health`,
       );
+      console.log(`[Server] CORS origenes permitidos:`);
+      allowedOrigins.forEach((origin) => console.log(`  - ${origin}`));
       console.log("[Server] ========================================");
     });
 

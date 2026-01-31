@@ -2,7 +2,8 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 
 // URL de la API del backend
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL || "https://82-180-163-31.sslip.io";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [

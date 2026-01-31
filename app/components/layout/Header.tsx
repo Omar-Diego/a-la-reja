@@ -37,15 +37,19 @@ export default function Header() {
           <div className="w-24 h-10 bg-white/10 rounded-lg animate-pulse" />
         ) : session ? (
           <div className="flex items-center gap-4">
-            <span className="text-white text-sm font-medium">
+            <span className="flex gap-10 justify-center items-center text-white text-[1.25rem] font-semibold leading-normal font-barlow">
               Hola, {session.user?.name || session.user?.email?.split("@")[0]}
             </span>
-            <button
+
+            <Link href="/dashboard">
+              <Button>Mi Panel</Button>
+            </Link>
+            <Button
+              variant="inverted"
               onClick={() => signOut({ callbackUrl: "/" })}
-              className="px-4 py-2 text-sm text-white/80 hover:text-white border border-white/20 hover:border-white/40 rounded-lg transition-all"
             >
               Cerrar Sesion
-            </button>
+            </Button>
           </div>
         ) : (
           <Link href="/login">
