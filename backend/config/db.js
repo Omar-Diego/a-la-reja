@@ -23,6 +23,17 @@ const mysql = require("mysql2/promise");
  * - Timeouts previenen conexiones colgadas
  * - Opciones SSL/TLS listas para uso en producción
  */
+/**
+ * Configuración SSL para conexiones seguras a la base de datos
+ * IMPORTANTE: Habilitar en producción para proteger datos en tránsito
+ */
+const sslConfig =
+  process.env.DB_SSL === "true"
+    ? {
+        rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== "false",
+      }
+    : undefined;
+
 const poolConfig = {
   // Credenciales de conexión desde variables de entorno
   host: process.env.DB_HOST,
@@ -30,6 +41,9 @@ const poolConfig = {
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   port: parseInt(process.env.DB_PORT, 10) || 3306,
+
+  // SEGURIDAD: Habilitar SSL/TLS para encriptar conexiones a la base de datos
+  ssl: sslConfig,
 
   // Configuraciones del pool de conexiones
   // Número máximo de conexiones en el pool

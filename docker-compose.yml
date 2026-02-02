@@ -2,24 +2,28 @@ version: '3.8'
 
 services:
   # MySQL Database
+  # SEGURIDAD: Las contraseñas DEBEN ser configuradas explícitamente via variables de entorno
+  # NUNCA exponer el puerto 3306 a Internet - usar solo redes internas
   mysql:
     image: mysql:8.0
     container_name: a_la_reja_mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
-      MYSQL_DATABASE: ${DB_NAME:-a_la_reja}
-      MYSQL_USER: ${DB_USER:-admin}
-      MYSQL_PASSWORD: ${DB_PASSWORD:-root}
+      # IMPORTANTE: Configurar contraseñas fuertes en archivo .env
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD is required}
+      MYSQL_DATABASE: ${DB_NAME:?DB_NAME is required}
+      MYSQL_USER: ${DB_USER:?DB_USER is required}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
     ports:
-      - "3306:3306"
+      # SEGURIDAD: En producción, comentar esta línea y usar solo red interna
+      - "127.0.0.1:3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
       - ./migrations/001_create_tables.sql:/docker-entrypoint-initdb.d/001_create_tables.sql:ro
       - ./migrations/002_seed_canchas.sql:/docker-entrypoint-initdb.d/002_seed_canchas.sql:ro
       - ./migrations/003_add_telefono.sql:/docker-entrypoint-initdb.d/003_add_telefono.sql:ro
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-rootpassword}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -39,11 +43,12 @@ services:
       PORT: 3001
       DB_HOST: mysql
       DB_PORT: 3306
-      DB_USER: ${DB_USER:-admin}
-      DB_PASSWORD: ${DB_PASSWORD:-root}
-      DB_NAME: ${DB_NAME:-a_la_reja}
-      JWT_SECRET: ${JWT_SECRET}
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      DB_USER: ${DB_USER:?DB_USER is required}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      DB_NAME: ${DB_NAME:?DB_NAME is required}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required - generate with: openssl rand -base64 64}
+      FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL is required}
+      DB_SSL: "false"
     ports:
       - "3001:3001"
     depends_on:

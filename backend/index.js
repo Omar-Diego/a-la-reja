@@ -15,6 +15,8 @@ require("dotenv").config();
 // Importar los módulos del framework y la base de datos
 const express = require("express");
 const cors = require("cors");
+const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
 const { pool, testConnection, closePool } = require("./config/db");
 const dbErrorHandler = require("./middlewares/dbErrorHandler");
 
@@ -28,6 +30,47 @@ const PORT = process.env.PORT || 3000;
  * Configuración de Middleware
  */
 
+// SEGURIDAD: Helmet establece varios headers HTTP de seguridad
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrc: ["'self'"],
+        imgSrc: ["'self'", "data:", "https:"],
+      },
+    },
+    crossOriginEmbedderPolicy: false, // Needed for some frontend frameworks
+  }),
+);
+
+// SEGURIDAD: Rate limiting para prevenir ataques de fuerza bruta
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 100, // Limite de 100 peticiones por ventana por IP
+  message: {
+    error: "Demasiadas peticiones, por favor intente de nuevo más tarde.",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Rate limiting estricto para endpoints de autenticación
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 5, // Solo 5 intentos de login por ventana
+  message: {
+    error:
+      "Demasiados intentos de inicio de sesión. Por favor intente de nuevo en 15 minutos.",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Aplicar rate limiting general a todas las rutas
+app.use(generalLimiter);
+
 // Habilitar CORS para peticiones de origen cruzado
 // SEGURIDAD: Configurar orígenes específicos para producción
 const allowedOrigins = [
@@ -39,7 +82,12 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: function (origin, callback) {
+      // SEGURIDAD: Rechazar peticiones sin origen en producción
       if (!origin) {
+        if (process.env.NODE_ENV === "production") {
+          return callback(new Error("Origin required"));
+        }
+        // Permitir en desarrollo para testing con herramientas como Postman
         return callback(null, true);
       }
       if (allowedOrigins.includes(origin)) {
@@ -80,6 +128,11 @@ const canchasRoutes = require("./routes/canchas");
  * Configuración de Rutas
  * Todas las rutas de la API tienen el prefijo /api
  */
+
+// Aplicar rate limiting estricto a endpoints de autenticación
+app.use("/api/login", authLimiter);
+app.use("/api/USUARIOS", authLimiter);
+
 console.log("[Server] Registrando rutas de usuarios...");
 app.use("/api", usuariosRoutes);
 console.log("[Server] Registrando rutas de reservaciones...");

@@ -15,7 +15,7 @@ const TOKEN_COOKIE_NAME = "auth_token";
 const COOKIE_OPTIONS = {
   expires: 7, // 7 days
   secure: process.env.NODE_ENV === "production",
-  sameSite: "lax" as const,
+  sameSite: "strict" as const, // SEGURIDAD: Cambiado de "lax" a "strict" para mejor protección CSRF
 };
 
 export interface User {

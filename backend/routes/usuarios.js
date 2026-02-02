@@ -162,10 +162,19 @@ router.post(
       });
     }
 
-    // Validar longitud de contraseña
-    if (password.length < 6) {
+    // SEGURIDAD: Validar requisitos de contraseña
+    // Minimo 8 caracteres, al menos una mayuscula, una minuscula y un numero
+    if (password.length < 8) {
       return res.status(400).json({
-        error: "La contrasena debe tener al menos 6 caracteres",
+        error: "La contrasena debe tener al menos 8 caracteres",
+      });
+    }
+
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/;
+    if (!passwordRegex.test(password)) {
+      return res.status(400).json({
+        error:
+          "La contrasena debe contener al menos una mayuscula, una minuscula y un numero",
       });
     }
 
