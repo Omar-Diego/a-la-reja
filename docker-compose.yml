@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   # MySQL Database
@@ -15,15 +15,25 @@ services:
       MYSQL_USER: ${DB_USER:?DB_USER_is_required}
       MYSQL_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD_is_required}
     ports:
-      # SEGURIDAD: En producción, comentar esta línea y usar solo red interna
-      - "127.0.0.1:3306:3306"
+      # MySQL expuesto en todas las interfaces para permitir conexiones remotas
+      - "0.0.0.0:3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
       - ./migrations/001_create_tables.sql:/docker-entrypoint-initdb.d/001_create_tables.sql:ro
       - ./migrations/002_seed_canchas.sql:/docker-entrypoint-initdb.d/002_seed_canchas.sql:ro
       - ./migrations/003_add_telefono.sql:/docker-entrypoint-initdb.d/003_add_telefono.sql:ro
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      test:
+        [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-h",
+          "localhost",
+          "-u",
+          "root",
+          "-p${MYSQL_ROOT_PASSWORD}",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
