@@ -90,9 +90,12 @@ app.use(
         // Permitir en desarrollo para testing con herramientas como Postman
         return callback(null, true);
       }
-      if (allowedOrigins.includes(origin)) {
+
+      // Permitir todos los subdominios de Vercel
+      if (origin.endsWith(".vercel.app") || allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
+
       return callback(new Error("Not allowed by CORS"));
     },
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
