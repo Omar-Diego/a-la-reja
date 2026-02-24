@@ -93,6 +93,7 @@ export default function ConfirmarReservaPage() {
           hora_inicio: reservationData.hora_inicio,
           hora_fin: horaFin,
           idCancha: courtInfo.id,
+          monto: precioTotal,
         }),
       });
 

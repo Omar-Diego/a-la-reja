@@ -76,27 +76,43 @@ app.use(generalLimiter);
 const allowedOrigins = [
   "https://a-la-reja.vercel.app",
   "http://localhost:3000",
+  "http://localhost:3001",
   process.env.FRONTEND_URL,
 ].filter(Boolean);
 
 app.use(
   cors({
     origin: function (origin, callback) {
-      // SEGURIDAD: Rechazar peticiones sin origen en producción
-      if (!origin) {
-        if (process.env.NODE_ENV === "production") {
-          return callback(new Error("Origin required"));
-        }
-        // Permitir en desarrollo para testing con herramientas como Postman
+      // En desarrollo, permitir peticiones sin origin (Postman, etc)
+      if (!origin && process.env.NODE_ENV !== "production") {
         return callback(null, true);
       }
 
       // Permitir todos los subdominios de Vercel
-      if (origin.endsWith(".vercel.app") || allowedOrigins.includes(origin)) {
+      if (origin && origin.endsWith(".vercel.app")) {
         return callback(null, true);
       }
 
-      return callback(new Error("Not allowed by CORS"));
+      // Permitir orígenes en la lista permitida
+      if (origin && allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      // En producción, rechazar peticiones sin origin
+      if (!origin && process.env.NODE_ENV === "production") {
+        return callback(null, false); // No enviar error, solo false
+      }
+
+      // Origen no permitido - en desarrollo loguear, en producción rechazar
+      if (process.env.NODE_ENV !== "production") {
+        console.warn(
+          `[CORS] Origen no permitido pero aceptado en desarrollo: ${origin}`,
+        );
+        return callback(null, true);
+      }
+
+      // En producción, rechazar silenciosamente
+      return callback(null, false);
     },
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],

@@ -188,7 +188,7 @@ router.delete(
       // Contar reservaciones antes de desvincularlas
       const [countResult] = await connection.query(
         "SELECT COUNT(*) as total FROM RESERVACIONES WHERE USUARIOS_idUsuario = ?",
-        [id]
+        [id],
       );
       const reservacionesCount = countResult[0].total;
 
@@ -196,13 +196,13 @@ router.delete(
       // Esto preserva el historial de ingresos y reservaciones
       await connection.query(
         "UPDATE RESERVACIONES SET USUARIOS_idUsuario = NULL WHERE USUARIOS_idUsuario = ?",
-        [id]
+        [id],
       );
 
       // Eliminar el usuario
       const [result] = await connection.query(
         "DELETE FROM USUARIOS WHERE idUsuario = ?",
-        [id]
+        [id],
       );
 
       await connection.commit();
@@ -216,7 +216,7 @@ router.delete(
       res.json({
         message: "Usuario eliminado exitosamente",
         reservacionesDesvinculadas: reservacionesCount,
-        nota: "Las reservaciones del usuario se mantuvieron para preservar el historial de ingresos"
+        nota: "Las reservaciones del usuario se mantuvieron para preservar el historial de ingresos",
       });
     } catch (err) {
       await connection.rollback();

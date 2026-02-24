@@ -63,15 +63,28 @@ router.post(
   auth,
   asyncHandler(async (req, res) => {
     // Extraer datos de reservación del cuerpo de la petición
-    const { fecha, hora_inicio, hora_fin, idCancha } = req.body;
+    const { fecha, hora_inicio, hora_fin, idCancha, monto } = req.body;
 
     // Obtener ID de usuario autenticado del token JWT (establecido por middleware auth)
     const idUsuario = req.usuario.idUsuario;
 
     // Validar campos requeridos
-    if (!fecha || !hora_inicio || !hora_fin || !idCancha) {
+    if (
+      !fecha ||
+      !hora_inicio ||
+      !hora_fin ||
+      !idCancha ||
+      monto === undefined
+    ) {
       return res.status(400).json({
-        error: "Fecha, hora_inicio, hora_fin e idCancha son requeridos",
+        error: "Fecha, hora_inicio, hora_fin, idCancha y monto son requeridos",
+      });
+    }
+
+    // Validar que el monto sea un número positivo
+    if (isNaN(monto) || monto <= 0) {
+      return res.status(400).json({
+        error: "El monto debe ser un número positivo",
       });
     }
 
@@ -139,8 +152,8 @@ router.post(
       // Insertar nueva reservación
       const insertSql = `
         INSERT INTO RESERVACIONES
-        (fecha, hora_inicio, hora_fin, USUARIOS_idUsuario, CANCHAS_idCancha)
-        VALUES (?, ?, ?, ?, ?)
+        (fecha, hora_inicio, hora_fin, USUARIOS_idUsuario, CANCHAS_idCancha, monto)
+        VALUES (?, ?, ?, ?, ?, ?)
       `;
 
       // Ejecutar consulta de inserción
@@ -150,6 +163,7 @@ router.post(
         hora_fin,
         idUsuario,
         idCancha,
+        monto,
       ]);
 
       // Confirmar transacción
@@ -222,7 +236,7 @@ router.get(
     SELECT r.idReservacion, DATE_FORMAT(r.fecha, '%Y-%m-%d') AS fecha, r.hora_inicio, r.hora_fin,
            COALESCE(u.nombre, 'Usuario eliminado') AS usuario,
            c.nombre AS cancha,
-           c.precio_por_hora AS precio
+           r.monto AS precio
     FROM RESERVACIONES r
     LEFT JOIN USUARIOS u ON r.USUARIOS_idUsuario = u.idUsuario
     JOIN CANCHAS c ON r.CANCHAS_idCancha = c.idCancha
@@ -323,8 +337,11 @@ router.get(
     const reservacion = resultados[0];
 
     // Verificar que el usuario autenticado sea el propietario o un admin
-    if (reservacion.USUARIOS_idUsuario !== req.usuario.idUsuario && req.usuario.role !== 'admin') {
-      return res.status(403).json({ message: 'Acceso denegado' });
+    if (
+      reservacion.USUARIOS_idUsuario !== req.usuario.idUsuario &&
+      req.usuario.role !== "admin"
+    ) {
+      return res.status(403).json({ message: "Acceso denegado" });
     }
 
     res.json(resultados[0]);
