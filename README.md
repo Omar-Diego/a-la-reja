@@ -8,6 +8,9 @@
 
 **🌐 Live Demo:** [**https://a-la-reja.vercel.app/**](https://a-la-reja.vercel.app/)
 
+> 📖 **Configuración de Producción:**  
+> [Guía de Vercel](VERCEL_SETUP.md) | [Configuración de Administrador](ADMIN_SETUP.md) | [Verificar Variables](.env.example)
+
 ![Next.js](https://img.shields.io/badge/Next.js-16.1.6-black?style=for-the-badge&logo=next.js)
 ![React](https://img.shields.io/badge/React-19.2.3-61DAFB?style=for-the-badge&logo=react)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=for-the-badge&logo=typescript)
@@ -589,14 +592,38 @@ cd a_la_reja
 
 ### 2. Configurar Variables de Entorno
 
+**IMPORTANTE:** El sistema requiere configuración de variables de entorno para funcionar correctamente.
+
+#### Verificar Configuración
+
+Usa el script de verificación:
+
+```bash
+node check-env.js
+```
+
+#### Configuración Rápida
+
+```bash
+# Copiar archivo de ejemplo
+cp .env.example .env
+
+# Editar con tus valores
+nano .env
+```
+
 #### Frontend (.env.local)
 
 ```env
 # NextAuth Configuration
 AUTH_SECRET=tu-auth-secret-generado-con-npx-auth-secret
 
-# Backend API URL (VPS o servidor local)
+# Backend API URL
 NEXT_PUBLIC_API_URL=http://localhost:3001
+
+# IMPORTANTE: Credenciales del Administrador
+ADMIN_EMAIL=admin@alareja.com
+ADMIN_PASSWORD=Admin123!
 ```
 
 #### Backend (.env para Docker Compose)
@@ -614,6 +641,11 @@ JWT_SECRET=tu-jwt-secret-muy-seguro
 # CORS
 FRONTEND_URL=http://localhost:3000
 ```
+
+**📖 Ver documentación completa:** [ADMIN_SETUP.md](ADMIN_SETUP.md)
+
+> ⚠️ **Nota Importante sobre el Administrador:**  
+> El usuario administrador NO está en la base de datos. Se valida usando las variables de entorno `ADMIN_EMAIL` y `ADMIN_PASSWORD`. Si no funcionan tus credenciales de admin en producción, verifica que estas variables estén configuradas correctamente.
 
 ### 3. Iniciar con Docker Compose (Backend + MySQL)
 

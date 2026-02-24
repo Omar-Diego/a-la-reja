@@ -31,6 +31,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
         const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
+        console.log("[NextAuth] Login attempt for:", credentials.email);
+        console.log("[NextAuth] ADMIN_EMAIL is set:", !!ADMIN_EMAIL);
+        console.log("[NextAuth] ADMIN_PASSWORD is set:", !!ADMIN_PASSWORD);
+
         // Verificar si es el administrador
         if (
           ADMIN_EMAIL &&

@@ -71,17 +71,46 @@ export default function AdminDashboardPage() {
       if (!token) return; // Wait for token to be available
 
       try {
+        console.log("[AdminDashboard] Fetching data from:", API_URL);
+        console.log("[AdminDashboard] Token present:", !!token);
+
         // Fetch all data in parallel
         const authHeaders = getAuthHeader();
+        console.log("[AdminDashboard] Auth headers:", authHeaders);
+
         const [usuariosRes, reservacionesRes, canchasRes] = await Promise.all([
           fetch(`${API_URL}/api/usuarios`, { headers: authHeaders }),
           fetch(`${API_URL}/api/reservaciones`, { headers: authHeaders }),
           fetch(`${API_URL}/api/canchas`, { headers: authHeaders }),
         ]);
 
+        console.log("[AdminDashboard] Response status:", {
+          usuarios: usuariosRes.status,
+          reservaciones: reservacionesRes.status,
+          canchas: canchasRes.status,
+        });
+
+        // Check for errors
+        if (!usuariosRes.ok || !reservacionesRes.ok || !canchasRes.ok) {
+          console.error("[AdminDashboard] API error:", {
+            usuarios: usuariosRes.ok ? "OK" : await usuariosRes.text(),
+            reservaciones: reservacionesRes.ok
+              ? "OK"
+              : await reservacionesRes.text(),
+            canchas: canchasRes.ok ? "OK" : await canchasRes.text(),
+          });
+          throw new Error("Error al obtener datos del servidor");
+        }
+
         const usuarios = await usuariosRes.json();
         const reservacionesData = await reservacionesRes.json();
         const canchasData = await canchasRes.json();
+
+        console.log("[AdminDashboard] Data received:", {
+          usuarios: usuarios.length || "not an array",
+          reservaciones: reservacionesData.length || "not an array",
+          canchas: canchasData.length || "not an array",
+        });
 
         // Ensure data is in array format
         const reservacionesArray = Array.isArray(reservacionesData)
