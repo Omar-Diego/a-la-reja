@@ -68,15 +68,6 @@ export default function AdminNavBar() {
         </div>
       </div>
       <div className="flex items-center gap-4">
-        {/* Ver Sitio */}
-        <Link
-          href="/dashboard"
-          className="hidden md:flex items-center gap-2 text-secondary hover:text-primary transition-colors"
-        >
-          <span className="material-symbols-outlined text-xl">open_in_new</span>
-          <span className="text-sm font-medium">Ver sitio</span>
-        </Link>
-
         {/* User Menu */}
         <div className="relative">
           <span

@@ -217,13 +217,14 @@ router.get(
 
     // Si no hay filtros, retornar todas las reservaciones con detalles
     // Usar DATE_FORMAT para garantizar formato YYYY-MM-DD consistente
+    // LEFT JOIN con USUARIOS porque puede ser NULL si el usuario fue eliminado
     const sql = `
     SELECT r.idReservacion, DATE_FORMAT(r.fecha, '%Y-%m-%d') AS fecha, r.hora_inicio, r.hora_fin,
-           u.nombre AS usuario,
+           COALESCE(u.nombre, 'Usuario eliminado') AS usuario,
            c.nombre AS cancha,
            c.precio_por_hora AS precio
     FROM RESERVACIONES r
-    JOIN USUARIOS u ON r.USUARIOS_idUsuario = u.idUsuario
+    LEFT JOIN USUARIOS u ON r.USUARIOS_idUsuario = u.idUsuario
     JOIN CANCHAS c ON r.CANCHAS_idCancha = c.idCancha
     ORDER BY r.fecha DESC, r.hora_inicio DESC
   `;
@@ -299,13 +300,14 @@ router.get(
 
     // Consulta SQL para obtener detalles de reservación
     // Usar DATE_FORMAT para garantizar formato YYYY-MM-DD consistente
+    // LEFT JOIN con USUARIOS porque puede ser NULL si el usuario fue eliminado
     const sql = `
     SELECT r.idReservacion, DATE_FORMAT(r.fecha, '%Y-%m-%d') AS fecha, r.hora_inicio, r.hora_fin,
            r.USUARIOS_idUsuario,
-           u.nombre AS usuario,
+           COALESCE(u.nombre, 'Usuario eliminado') AS usuario,
            c.nombre AS cancha, c.ubicacion, c.precio_por_hora
     FROM RESERVACIONES r
-    JOIN USUARIOS u ON r.USUARIOS_idUsuario = u.idUsuario
+    LEFT JOIN USUARIOS u ON r.USUARIOS_idUsuario = u.idUsuario
     JOIN CANCHAS c ON r.CANCHAS_idCancha = c.idCancha
     WHERE r.idReservacion = ?
   `;

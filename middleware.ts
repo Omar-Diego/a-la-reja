@@ -29,6 +29,16 @@ export default auth((req) => {
     (route) => pathname === route || pathname.startsWith(`${route}/`),
   );
 
+  // Si es admin y va a la raíz, redirigir a /admin
+  if (pathname === "/" && isAuthenticated && userRole === "admin") {
+    return NextResponse.redirect(new URL("/admin", nextUrl.origin));
+  }
+
+  // Si es admin intentando acceder a rutas de usuario normal, redirigir a /admin
+  if (isProtectedRoute && isAuthenticated && userRole === "admin") {
+    return NextResponse.redirect(new URL("/admin", nextUrl.origin));
+  }
+
   // Proteger rutas de usuario normal
   if (isProtectedRoute && !isAuthenticated) {
     const loginUrl = new URL("/login", nextUrl.origin);

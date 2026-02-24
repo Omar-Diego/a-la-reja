@@ -161,12 +161,16 @@ router.put(
  * DELETE /api/usuarios/:id
  *
  * Elimina un usuario específico (solo admin)
- * Usa transacción para eliminar primero las reservaciones del usuario
- * y luego el usuario, garantizando integridad referencial.
+ * IMPORTANTE: Las reservaciones del usuario se mantienen para preservar
+ * el historial de ingresos, pero se desvinculan del usuario (USUARIOS_idUsuario = NULL).
+ * Esto permite:
+ * - Mantener el registro de ingresos históricos
+ * - Preservar datos de reservaciones para auditoría
+ * - No afectar las estadísticas de ingresos totales
  *
  * @route DELETE /api/usuarios/:id
  * @param {number} id - ID del usuario
- * @returns {Object} Mensaje de éxito
+ * @returns {Object} Mensaje de éxito con cantidad de reservaciones desvinculadas
  */
 router.delete(
   "/usuarios/:id",
@@ -181,15 +185,24 @@ router.delete(
     try {
       await connection.beginTransaction();
 
-      // Primero eliminar las reservaciones del usuario
-      await connection.query("DELETE FROM RESERVACIONES WHERE USUARIOS_idUsuario = ?", [
-        id,
-      ]);
+      // Contar reservaciones antes de desvincularlas
+      const [countResult] = await connection.query(
+        "SELECT COUNT(*) as total FROM RESERVACIONES WHERE USUARIOS_idUsuario = ?",
+        [id]
+      );
+      const reservacionesCount = countResult[0].total;
 
-      // Luego eliminar el usuario
+      // Desvincular las reservaciones del usuario (poner NULL en lugar de eliminar)
+      // Esto preserva el historial de ingresos y reservaciones
+      await connection.query(
+        "UPDATE RESERVACIONES SET USUARIOS_idUsuario = NULL WHERE USUARIOS_idUsuario = ?",
+        [id]
+      );
+
+      // Eliminar el usuario
       const [result] = await connection.query(
         "DELETE FROM USUARIOS WHERE idUsuario = ?",
-        [id],
+        [id]
       );
 
       await connection.commit();
@@ -202,6 +215,8 @@ router.delete(
 
       res.json({
         message: "Usuario eliminado exitosamente",
+        reservacionesDesvinculadas: reservacionesCount,
+        nota: "Las reservaciones del usuario se mantuvieron para preservar el historial de ingresos"
       });
     } catch (err) {
       await connection.rollback();
