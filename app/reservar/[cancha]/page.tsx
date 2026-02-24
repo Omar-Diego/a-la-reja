@@ -8,7 +8,6 @@ import Button from "@/app/components/ui/button";
 import { API_URL } from "@/app/lib/constants";
 import {
   BookedSlot,
-  getCourtIdFromSlug,
   formatDateToISO,
   formatDateDisplay,
   isTimeSlotBooked,
@@ -23,12 +22,22 @@ interface CalendarDay {
   disabled: boolean;
 }
 
+interface Court {
+  idCancha: number;
+  nombre: string;
+  ubicacion: string;
+  precio_por_hora: number;
+}
+
 export default function SeleccionarFechaPage() {
   const { isLoading } = useAuth();
   const params = useParams();
   const router = useRouter();
   const cancha = params.cancha as string;
-  const canchaId = getCourtIdFromSlug(cancha);
+
+  const [court, setCourt] = useState<Court | null>(null);
+  const [courtLoading, setCourtLoading] = useState(true);
+  const [courtError, setCourtError] = useState<string | null>(null);
 
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -36,6 +45,28 @@ export default function SeleccionarFechaPage() {
 
   const [bookedSlots, setBookedSlots] = useState<BookedSlot[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
+
+  // Fetch court data by slug
+  useEffect(() => {
+    async function fetchCourt() {
+      try {
+        const response = await fetch(
+          `${API_URL}/api/canchas/by-slug/${cancha}`,
+        );
+        if (!response.ok) {
+          setCourtError("Cancha no encontrada");
+          return;
+        }
+        const data: Court = await response.json();
+        setCourt(data);
+      } catch {
+        setCourtError("Error al cargar la cancha");
+      } finally {
+        setCourtLoading(false);
+      }
+    }
+    fetchCourt();
+  }, [cancha]);
 
   const allTimeSlots = [
     "08:00",
@@ -104,13 +135,13 @@ export default function SeleccionarFechaPage() {
   }, [currentMonth]);
 
   const fetchBookedSlots = useCallback(async () => {
-    if (!selectedDate) return;
+    if (!selectedDate || !court) return;
 
     setSlotsLoading(true);
     try {
       const dateStr = formatDateToISO(selectedDate);
       const response = await fetch(
-        `${API_URL}/api/reservaciones?fecha=${dateStr}&canchaId=${canchaId}`,
+        `${API_URL}/api/reservaciones?fecha=${dateStr}&canchaId=${court.idCancha}`,
       );
       if (response.ok) {
         const data = await response.json();
@@ -121,7 +152,7 @@ export default function SeleccionarFechaPage() {
     } finally {
       setSlotsLoading(false);
     }
-  }, [selectedDate, canchaId]);
+  }, [selectedDate, court]);
 
   useEffect(() => {
     fetchBookedSlots();
@@ -168,25 +199,63 @@ export default function SeleccionarFechaPage() {
   };
 
   const handleContinue = () => {
-    if (!selectedDate || !selectedTime) return;
+    if (!selectedDate || !selectedTime || !court) return;
 
     sessionStorage.setItem(
       "reservationData",
       JSON.stringify({
         fecha: formatDateToISO(selectedDate),
         hora_inicio: selectedTime,
-        canchaId,
+        canchaId: court.idCancha,
         cancha,
+        canchaName: court.nombre,
+        precioPorHora: court.precio_por_hora,
       }),
     );
 
     router.push(`/reservar/${cancha}/confirmar`);
   };
 
-  if (isLoading) {
+  if (isLoading || courtLoading) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (courtError || !court) {
+    return (
+      <div className="bg-[#f8fafc] min-h-screen px-8 md:px-20 lg:px-36 py-16">
+        <div className="flex items-center gap-4 mb-6">
+          <Link
+            href="/reservar"
+            className="flex items-center justify-center p-2 text-secondary hover:bg-primary rounded-full"
+          >
+            <span className="material-symbols-outlined">
+              keyboard_arrow_left
+            </span>
+          </Link>
+          <div>
+            <h1 className="font-barlow font-bold text-secondary text-[32px] uppercase">
+              CANCHA NO ENCONTRADA
+            </h1>
+          </div>
+        </div>
+        <div className="bg-white border border-[#ededed] rounded-[10px] p-12 text-center">
+          <span className="material-symbols-outlined text-5xl text-gray-300 mb-4 block">
+            error
+          </span>
+          <p className="text-[#64748b] text-lg mb-4">
+            {courtError || "La cancha solicitada no existe"}
+          </p>
+          <Link
+            href="/reservar"
+            className="text-primary font-semibold hover:underline"
+          >
+            Volver a seleccionar cancha
+          </Link>
+        </div>
       </div>
     );
   }

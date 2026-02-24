@@ -3,35 +3,49 @@
 import { useAuth } from "@/app/context/AuthContext";
 import Link from "next/link";
 import Image from "next/image";
+import { useState, useEffect } from "react";
+import { API_URL } from "@/app/lib/constants";
 
-const COURTS = [
-  {
-    id: 1,
-    slug: "pista-1",
-    nombre: "Pista 1",
-    descripcion: "Cancha central con iluminacion LED profesional",
-    precio: 25,
-  },
-  {
-    id: 2,
-    slug: "pista-2",
-    nombre: "Pista 2",
-    descripcion: "Cancha exterior con cesped artificial premium",
-    precio: 20,
-  },
-  {
-    id: 3,
-    slug: "pista-central",
-    nombre: "Pista Central",
-    descripcion: "Nuestra cancha estrella para torneos y eventos",
-    precio: 30,
-  },
-];
+interface Court {
+  idCancha: number;
+  nombre: string;
+  ubicacion: string;
+  precio_por_hora: number;
+  totalReservaciones: number;
+}
+
+// Función para generar slug desde nombre
+const generateSlug = (nombre: string): string => {
+  return nombre
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // Remove accents
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "");
+};
 
 export default function ReservarPage() {
   const { isLoading } = useAuth();
+  const [courts, setCourts] = useState<Court[]>([]);
+  const [courtsLoading, setCourtsLoading] = useState(true);
 
-  if (isLoading) {
+  useEffect(() => {
+    async function fetchCourts() {
+      try {
+        const response = await fetch(`${API_URL}/api/canchas`);
+        if (!response.ok) throw new Error("Error al cargar canchas");
+        const data: Court[] = await response.json();
+        setCourts(data);
+      } catch {
+        setCourts([]);
+      } finally {
+        setCourtsLoading(false);
+      }
+    }
+    fetchCourts();
+  }, []);
+
+  if (isLoading || courtsLoading) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
@@ -74,35 +88,47 @@ export default function ReservarPage() {
       </h2>
 
       {/* Court Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {COURTS.map((court) => (
-          <Link
-            key={court.id}
-            href={`/reservar/${court.slug}`}
-            className="bg-white rounded-[10px] overflow-hidden hover:shadow-lg hover:border hover:border-primary transition-shadow border border-[#ededed]"
-          >
-            <div className="relative w-full h-50">
-              <Image
-                src="/images/Hero.jpg"
-                alt={court.nombre}
-                fill
-                className="object-cover"
-              />
-            </div>
-            <div className="p-5">
-              <h3 className="font-barlow font-bold text-secondary text-lg mb-2">
-                {court.nombre.toUpperCase()}
-              </h3>
-              <p className="text-[#64748b] text-sm mb-4">{court.descripcion}</p>
-              <div className="flex justify-between items-center">
-                <p className="font-bold text-secondary text-xl">
-                  ${court.precio}/h
-                </p>
+      {courts.length === 0 ? (
+        <div className="bg-white border border-[#ededed] rounded-[10px] p-12 text-center">
+          <span className="material-symbols-outlined text-5xl text-gray-300 mb-4 block">
+            sports_tennis
+          </span>
+          <p className="text-[#64748b] text-lg mb-2">
+            No hay canchas disponibles
+          </p>
+          <p className="text-[#94a3b8] text-sm">Vuelve más tarde</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {courts.map((court) => (
+            <Link
+              key={court.idCancha}
+              href={`/reservar/${generateSlug(court.nombre)}`}
+              className="bg-white rounded-[10px] overflow-hidden hover:shadow-lg hover:border hover:border-primary transition-shadow border border-[#ededed]"
+            >
+              <div className="relative w-full h-50">
+                <Image
+                  src="/images/Hero.jpg"
+                  alt={court.nombre}
+                  fill
+                  className="object-cover"
+                />
               </div>
-            </div>
-          </Link>
-        ))}
-      </div>
+              <div className="p-5">
+                <h3 className="font-barlow font-bold text-secondary text-lg mb-2">
+                  {court.nombre.toUpperCase()}
+                </h3>
+                <p className="text-[#64748b] text-sm mb-4">{court.ubicacion}</p>
+                <div className="flex justify-between items-center">
+                  <p className="font-bold text-secondary text-xl">
+                    ${court.precio_por_hora}/h
+                  </p>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

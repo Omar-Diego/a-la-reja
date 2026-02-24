@@ -23,6 +23,7 @@ export interface User {
   nombre: string;
   email: string;
   telefono?: string | null;
+  role: "admin" | "user";
 }
 
 interface AuthContextType {
@@ -30,6 +31,7 @@ interface AuthContextType {
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isAdmin: boolean;
   login: (token: string, user: User) => void;
   logout: () => Promise<void>;
   getAuthHeader: () => Record<string, string>;
@@ -49,6 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         id: session.user.id || "",
         nombre: session.user.name || "",
         email: session.user.email || "",
+        role: session.user.role || "user",
       };
       setUser(userData);
 
@@ -99,11 +102,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return {};
   }, [token]);
 
+  const isAdmin = user?.role === "admin";
+
   const value: AuthContextType = {
     user,
     token,
     isAuthenticated: !!user && !!token,
     isLoading: status === "loading",
+    isAdmin,
     login,
     logout,
     getAuthHeader,

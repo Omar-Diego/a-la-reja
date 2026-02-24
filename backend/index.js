@@ -120,7 +120,9 @@ if (process.env.NODE_ENV !== "production") {
 /**
  * Importación de Rutas
  */
-const usuariosRoutes = require("./routes/usuarios");
+const authRoutes = require("./routes/auth");
+const profileRoutes = require("./routes/profile");
+const adminUsuariosRoutes = require("./routes/admin/usuarios");
 const reservacionesRoutes = require("./routes/reservaciones");
 const canchasRoutes = require("./routes/canchas");
 
@@ -129,12 +131,20 @@ const canchasRoutes = require("./routes/canchas");
  * Todas las rutas de la API tienen el prefijo /api
  */
 
-// Aplicar rate limiting estricto a endpoints de autenticación
+// Aplicar rate limiting estricto solo a endpoints de autenticación
 app.use("/api/login", authLimiter);
-app.use("/api/USUARIOS", authLimiter);
+// Limitar registro de nuevos usuarios (POST /api/usuarios)
+app.use("/api/usuarios", (req, res, next) => {
+  if (req.method === "POST") return authLimiter(req, res, next);
+  next();
+});
 
-console.log("[Server] Registrando rutas de usuarios...");
-app.use("/api", usuariosRoutes);
+console.log("[Server] Registrando rutas de autenticacion...");
+app.use("/api", authRoutes);
+console.log("[Server] Registrando rutas de perfil...");
+app.use("/api", profileRoutes);
+console.log("[Server] Registrando rutas de administracion de usuarios...");
+app.use("/api", adminUsuariosRoutes);
 console.log("[Server] Registrando rutas de reservaciones...");
 app.use("/api", reservacionesRoutes);
 console.log("[Server] Registrando rutas de canchas...");
@@ -327,7 +337,9 @@ function setupGracefulShutdown(server) {
       "razón:",
       reason,
     );
-    // No salir en rechazos no manejados, solo registrarlos
+    if (process.env.NODE_ENV === "production") {
+      shutdown("unhandledRejection");
+    }
   });
 }
 

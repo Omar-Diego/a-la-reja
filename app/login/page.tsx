@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { signIn } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Footer from "../components/layout/Footer";
@@ -10,6 +10,7 @@ import Button from "../components/ui/button";
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { data: session, status } = useSession();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -22,6 +23,18 @@ function LoginForm() {
     }
   }, [searchParams]);
 
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (status === "authenticated" && session?.user) {
+      const role = session.user.role;
+      if (role === "admin") {
+        router.push("/admin");
+      } else {
+        router.push("/dashboard");
+      }
+    }
+  }, [session, status, router]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -29,8 +42,6 @@ function LoginForm() {
     setLoading(true);
 
     try {
-      const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
-
       const result = await signIn("credentials", {
         email,
         password,
@@ -42,7 +53,7 @@ function LoginForm() {
           "Credenciales invalidas. Por favor verifica tu email y contrasena.",
         );
       } else {
-        router.push(callbackUrl);
+        // El useEffect se encargará de la redirección correcta
         router.refresh();
       }
     } catch {

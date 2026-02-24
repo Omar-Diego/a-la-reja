@@ -26,9 +26,17 @@ export default function RegisterPage() {
       return;
     }
 
-    // Validar longitud de la contraseña
-    if (password.length < 6) {
-      setError("La contrasena debe tener al menos 6 caracteres");
+    // Validar requisitos de contraseña (mínimo 8 caracteres, mayúscula, minúscula y número)
+    if (password.length < 8) {
+      setError("La contrasena debe tener al menos 8 caracteres");
+      return;
+    }
+
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/;
+    if (!passwordRegex.test(password)) {
+      setError(
+        "La contrasena debe contener al menos una mayuscula, una minuscula y un numero",
+      );
       return;
     }
 
@@ -143,7 +151,7 @@ export default function RegisterPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  minLength={6}
+                  minLength={8}
                   className="w-full px-4 py-3 bg-white/10 border border-black/10 rounded-lg text-secondary/70 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
                   placeholder="Minimo 8 caracteres"
                 />
@@ -162,7 +170,7 @@ export default function RegisterPage() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
-                  minLength={6}
+                  minLength={8}
                   className="w-full px-4 py-3 bg-white/10 border border-black/10 rounded-lg text-secondary/70 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
                   placeholder="Repite tu contrasena"
                 />

@@ -25,6 +25,17 @@ const { pool } = require("../config/db");
 // Importar middleware de autenticación JWT
 const auth = require("../middlewares/auth");
 
+// Importar middleware de autenticación para administradores
+const adminAuth = require("../middlewares/adminAuth");
+
+// Middleware condicional: requiere adminAuth solo cuando no se usan filtros de disponibilidad
+const requireAdminIfUnfiltered = (req, res, next) => {
+  if (req.query.fecha && req.query.canchaId) {
+    return next(); // Consulta pública de disponibilidad
+  }
+  return adminAuth(req, res, next); // Lista completa: solo admins
+};
+
 // Importar manejador asíncrono para manejo de errores
 const { asyncHandler } = require("../middlewares/dbErrorHandler");
 
@@ -176,6 +187,7 @@ router.post(
  */
 router.get(
   "/reservaciones",
+  requireAdminIfUnfiltered,
   asyncHandler(async (req, res) => {
     // Verificar si se filtra por fecha y cancha
     const { fecha, canchaId } = req.query;
@@ -208,11 +220,12 @@ router.get(
     const sql = `
     SELECT r.idReservacion, DATE_FORMAT(r.fecha, '%Y-%m-%d') AS fecha, r.hora_inicio, r.hora_fin,
            u.nombre AS usuario,
-           c.nombre AS cancha
+           c.nombre AS cancha,
+           c.precio_por_hora AS precio
     FROM RESERVACIONES r
     JOIN USUARIOS u ON r.USUARIOS_idUsuario = u.idUsuario
     JOIN CANCHAS c ON r.CANCHAS_idCancha = c.idCancha
-    ORDER BY r.fecha, r.hora_inicio
+    ORDER BY r.fecha DESC, r.hora_inicio DESC
   `;
 
     const [resultados] = await pool.query(sql);
@@ -272,6 +285,7 @@ router.get(
  */
 router.get(
   "/reservaciones/:idReservacion",
+  auth,
   asyncHandler(async (req, res) => {
     // Extraer y validar ID de reservación
     const { idReservacion } = req.params;
@@ -287,6 +301,7 @@ router.get(
     // Usar DATE_FORMAT para garantizar formato YYYY-MM-DD consistente
     const sql = `
     SELECT r.idReservacion, DATE_FORMAT(r.fecha, '%Y-%m-%d') AS fecha, r.hora_inicio, r.hora_fin,
+           r.USUARIOS_idUsuario,
            u.nombre AS usuario,
            c.nombre AS cancha, c.ubicacion, c.precio_por_hora
     FROM RESERVACIONES r
@@ -301,6 +316,13 @@ router.get(
       return res.status(404).json({
         error: "Reservacion no encontrada",
       });
+    }
+
+    const reservacion = resultados[0];
+
+    // Verificar que el usuario autenticado sea el propietario o un admin
+    if (reservacion.USUARIOS_idUsuario !== req.usuario.idUsuario && req.usuario.role !== 'admin') {
+      return res.status(403).json({ message: 'Acceso denegado' });
     }
 
     res.json(resultados[0]);
@@ -497,6 +519,45 @@ router.put(
     }
 
     res.json({ message: "Reservacion modificada correctamente" });
+  }),
+);
+
+/**
+ * DELETE /api/admin/reservaciones/:idReservacion
+ *
+ * Elimina cualquier reservación (solo admin)
+ *
+ * @route DELETE /api/admin/reservaciones/:idReservacion
+ * @param {number} idReservacion - ID de reservación a eliminar
+ * @returns {Object} Mensaje de éxito
+ *
+ * Nota: Este endpoint está destinado para uso administrativo
+ * y no requiere verificar el propietario de la reservación
+ */
+router.delete(
+  "/admin/reservaciones/:idReservacion",
+  adminAuth,
+  asyncHandler(async (req, res) => {
+    const { idReservacion } = req.params;
+
+    const id = parseInt(idReservacion, 10);
+    if (isNaN(id) || id <= 0) {
+      return res.status(400).json({
+        error: "ID de reservacion invalido",
+      });
+    }
+
+    const sql = `DELETE FROM RESERVACIONES WHERE idReservacion = ?`;
+
+    const [resultado] = await pool.query(sql, [id]);
+
+    if (resultado.affectedRows === 0) {
+      return res.status(404).json({
+        error: "Reservacion no encontrada",
+      });
+    }
+
+    res.json({ message: "Reservacion eliminada correctamente" });
   }),
 );
 

@@ -5,35 +5,38 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect } from "react";
 import { API_URL } from "@/app/lib/constants";
-import { Reservation, formatShortDate, isReservationUpcoming } from "@/app/lib/types";
+import {
+  Reservation,
+  formatShortDate,
+  isReservationUpcoming,
+} from "@/app/lib/types";
 
-const COURTS = [
-  {
-    id: 1,
-    slug: "pista-1",
-    nombre: "Pista 1",
-    precio: 25,
-  },
-  {
-    id: 2,
-    slug: "pista-2",
-    nombre: "Pista 2",
-    precio: 20,
-  },
-  {
-    id: 3,
-    slug: "pista-central",
-    nombre: "Pista Central",
-    precio: 30,
-  },
-];
+interface Court {
+  idCancha: number;
+  nombre: string;
+  ubicacion: string;
+  precio_por_hora: number;
+  totalReservaciones: number;
+}
+
+// Función para generar slug desde nombre
+const generateSlug = (nombre: string): string => {
+  return nombre
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // Remove accents
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "");
+};
 
 export default function DashboardPage() {
   const { user, isLoading, getAuthHeader } = useAuth();
   const [upcomingReservations, setUpcomingReservations] = useState<
     Reservation[]
   >([]);
+  const [topCourts, setTopCourts] = useState<Court[]>([]);
   const [reservationsLoading, setReservationsLoading] = useState(true);
+  const [courtsLoading, setCourtsLoading] = useState(true);
 
   useEffect(() => {
     async function fetchReservations() {
@@ -63,6 +66,22 @@ export default function DashboardPage() {
     }
     fetchReservations();
   }, [getAuthHeader]);
+
+  useEffect(() => {
+    async function fetchTopCourts() {
+      try {
+        const response = await fetch(`${API_URL}/api/canchas/top`);
+        if (!response.ok) throw new Error("Error al cargar canchas");
+        const data: Court[] = await response.json();
+        setTopCourts(data);
+      } catch {
+        setTopCourts([]);
+      } finally {
+        setCourtsLoading(false);
+      }
+    }
+    fetchTopCourts();
+  }, []);
 
   if (isLoading) {
     return (
@@ -207,39 +226,54 @@ export default function DashboardPage() {
             {/* Nuestras Canchas */}
             <div>
               <h2 className="font-barlow font-bold text-secondary text-xl mb-7">
-                NUESTRAS CANCHAS
+                CANCHAS MÁS POPULARES
               </h2>
 
-              <div className="flex flex-col gap-4">
-                {COURTS.map((court) => (
-                  <Link
-                    key={court.id}
-                    href={`/reservar/${court.slug}`}
-                    className="bg-white border border-[#ededed] rounded-[10px] p-3 flex gap-2.5 items-center hover:shadow-md hover:border-primary transition-all"
-                  >
-                    <div className="w-18.5 h-18.5 bg-gray-200 rounded-xl overflow-hidden shrink-0">
-                      <Image
-                        src="/images/Hero.jpg"
-                        alt={court.nombre}
-                        width={74}
-                        height={74}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="flex-1 flex flex-col gap-1">
-                      <p className="font-semibold text-sm text-black">
-                        {court.nombre}
-                      </p>
-                      <p className="font-semibold text-sm text-[#7e7e7e]">
-                        ${court.precio}/hora
-                      </p>
-                      <div className="bg-[#dcfce7] px-4 py-1 rounded-full inline-block w-fit">
-                        <p className="text-[#15803d] text-sm">Disponible</p>
+              {courtsLoading ? (
+                <div className="bg-white border border-[#ededed] rounded-[10px] p-8 flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+                </div>
+              ) : topCourts.length === 0 ? (
+                <div className="bg-white border border-[#ededed] rounded-[10px] p-8 text-center">
+                  <span className="material-symbols-outlined text-4xl text-gray-300 mb-2 block">
+                    sports_tennis
+                  </span>
+                  <p className="text-[#64748b] text-sm">
+                    No hay canchas disponibles
+                  </p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-4">
+                  {topCourts.map((court) => (
+                    <Link
+                      key={court.idCancha}
+                      href={`/reservar/${generateSlug(court.nombre)}`}
+                      className="bg-white border border-[#ededed] rounded-[10px] p-3 flex gap-2.5 items-center hover:shadow-md hover:border-primary transition-all"
+                    >
+                      <div className="w-18.5 h-18.5 bg-gray-200 rounded-xl overflow-hidden shrink-0">
+                        <Image
+                          src="/images/Hero.jpg"
+                          alt={court.nombre}
+                          width={74}
+                          height={74}
+                          className="w-full h-full object-cover"
+                        />
                       </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
+                      <div className="flex-1 flex flex-col gap-1">
+                        <p className="font-semibold text-sm text-black">
+                          {court.nombre}
+                        </p>
+                        <p className="font-semibold text-sm text-[#7e7e7e]">
+                          ${court.precio_por_hora}/hora
+                        </p>
+                        <div className="bg-[#dcfce7] px-4 py-1 rounded-full inline-block w-fit">
+                          <p className="text-[#15803d] text-sm">Disponible</p>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

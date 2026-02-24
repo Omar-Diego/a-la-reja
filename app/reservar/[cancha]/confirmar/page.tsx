@@ -9,35 +9,20 @@ import Image from "next/image";
 import { API_URL } from "@/app/lib/constants";
 import { formatDateDisplay, calculateEndTime } from "@/app/lib/types";
 
-const COURT_INFO: Record<
-  string,
-  { id: number; nombre: string; descripcion: string; precio: number }
-> = {
-  "pista-1": {
-    id: 1,
-    nombre: "Pista 1",
-    descripcion: "Cancha central con iluminacion LED profesional",
-    precio: 25,
-  },
-  "pista-2": {
-    id: 2,
-    nombre: "Pista 2",
-    descripcion: "Cancha exterior con cesped artificial premium",
-    precio: 20,
-  },
-  "pista-central": {
-    id: 3,
-    nombre: "Pista Central",
-    descripcion: "Nuestra cancha estrella para torneos y eventos",
-    precio: 30,
-  },
-};
-
 interface ReservationData {
   fecha: string;
   hora_inicio: string;
   canchaId: number;
   cancha: string;
+  canchaName?: string;
+  precioPorHora?: number;
+}
+
+interface CourtInfo {
+  id: number;
+  nombre: string;
+  descripcion: string;
+  precio: number;
 }
 
 export default function ConfirmarReservaPage() {
@@ -52,17 +37,27 @@ export default function ConfirmarReservaPage() {
   const [error, setError] = useState<string | null>(null);
   const [reservationData, setReservationData] =
     useState<ReservationData | null>(null);
+  const [courtInfo, setCourtInfo] = useState<CourtInfo | null>(null);
 
   useEffect(() => {
     const stored = sessionStorage.getItem("reservationData");
     if (stored) {
-      setReservationData(JSON.parse(stored));
+      const data = JSON.parse(stored) as ReservationData;
+      setReservationData(data);
+
+      // Set court info from reservation data
+      setCourtInfo({
+        id: data.canchaId,
+        nombre: data.canchaName || cancha,
+        descripcion: "",
+        precio: data.precioPorHora || 25,
+      });
     } else {
       router.push(`/reservar/${cancha}`);
     }
   }, [cancha, router]);
 
-  if (isLoading || !reservationData) {
+  if (isLoading || !reservationData || !courtInfo) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
@@ -70,10 +65,8 @@ export default function ConfirmarReservaPage() {
     );
   }
 
-  const info = COURT_INFO[cancha] || COURT_INFO["pista-1"];
-
   const durationHours = duration === "1h" ? 1 : duration === "1.5h" ? 1.5 : 2;
-  const precioTotal = info.precio * durationHours;
+  const precioTotal = courtInfo.precio * durationHours;
 
   const horaFin = calculateEndTime(reservationData.hora_inicio, durationHours);
 
@@ -99,7 +92,7 @@ export default function ConfirmarReservaPage() {
           fecha: reservationData.fecha,
           hora_inicio: reservationData.hora_inicio,
           hora_fin: horaFin,
-          idCancha: info.id,
+          idCancha: courtInfo.id,
         }),
       });
 
@@ -254,7 +247,7 @@ export default function ConfirmarReservaPage() {
             <div className="w-20 h-20 rounded-xl overflow-hidden shrink-0">
               <Image
                 src="/images/Hero.jpg"
-                alt={info.nombre}
+                alt={courtInfo.nombre}
                 width={80}
                 height={80}
                 className="w-full h-full object-cover"
@@ -262,9 +255,9 @@ export default function ConfirmarReservaPage() {
             </div>
             <div>
               <h3 className="font-barlow font-bold text-secondary text-lg mb-1">
-                {info.nombre}
+                {courtInfo.nombre}
               </h3>
-              <p className="text-[#64748b] text-sm">{info.descripcion}</p>
+              <p className="text-[#64748b] text-sm">${courtInfo.precio}/hora</p>
             </div>
           </div>
 
