@@ -83,7 +83,14 @@ export default function AdminDashboardPage() {
         const reservacionesData = await reservacionesRes.json();
         const canchasData = await canchasRes.json();
 
-        setAllReservaciones(reservacionesData);
+        // Ensure data is in array format
+        const reservacionesArray = Array.isArray(reservacionesData)
+          ? reservacionesData
+          : [];
+        const usuariosArray = Array.isArray(usuarios) ? usuarios : [];
+        const canchasArray = Array.isArray(canchasData) ? canchasData : [];
+
+        setAllReservaciones(reservacionesArray);
 
         // Calculate stats
         const today = new Date().toISOString().split("T")[0];
@@ -95,16 +102,16 @@ export default function AdminDashboardPage() {
         monthStart.setDate(1);
         const monthStartStr = monthStart.toISOString().split("T")[0];
 
-        const reservacionesHoy = reservacionesData.filter(
+        const reservacionesHoy = reservacionesArray.filter(
           (r: Reservacion) => r.fecha === today,
         ).length;
 
-        const reservacionesSemana = reservacionesData.filter(
+        const reservacionesSemana = reservacionesArray.filter(
           (r: Reservacion) => r.fecha >= weekStartStr,
         ).length;
 
         // Calculate income for current month
-        const reservacionesMes = reservacionesData.filter(
+        const reservacionesMes = reservacionesArray.filter(
           (r: Reservacion) => r.fecha >= monthStartStr,
         );
         const ingresosMes = reservacionesMes.reduce(
@@ -115,7 +122,7 @@ export default function AdminDashboardPage() {
 
         // Calculate reservations per court
         const porCancha: { [key: string]: number } = {};
-        reservacionesData.forEach((r: Reservacion) => {
+        reservacionesArray.forEach((r: Reservacion) => {
           porCancha[r.cancha] = (porCancha[r.cancha] || 0) + 1;
         });
         const reservacionesPorCanchaArr = Object.entries(porCancha).map(
@@ -126,13 +133,13 @@ export default function AdminDashboardPage() {
           ingresosMes,
           reservacionesHoy,
           reservacionesSemana,
-          totalUsuarios: usuarios.length,
-          totalReservaciones: reservacionesData.length,
-          canchasActivas: canchasData.length,
+          totalUsuarios: usuariosArray.length,
+          totalReservaciones: reservacionesArray.length,
+          canchasActivas: canchasArray.length,
         });
 
         // Get latest reservations with upcoming ones first
-        const sortedReservaciones = [...reservacionesData]
+        const sortedReservaciones = [...reservacionesArray]
           .sort((a: Reservacion, b: Reservacion) => {
             if (a.fecha > today && b.fecha <= today) return -1;
             if (b.fecha > today && a.fecha <= today) return 1;
@@ -144,7 +151,9 @@ export default function AdminDashboardPage() {
         setReservacionesPorCancha(reservacionesPorCanchaArr);
       } catch (error) {
         console.error("Error fetching admin data:", error);
-        setFetchError("Error al cargar los datos del panel. Intenta recargar la página.");
+        setFetchError(
+          "Error al cargar los datos del panel. Intenta recargar la página.",
+        );
       } finally {
         setStatsLoading(false);
       }
@@ -289,7 +298,9 @@ export default function AdminDashboardPage() {
     return (
       <div className="flex items-center justify-center h-full px-8">
         <div className="bg-red-100 border border-red-400 text-red-700 px-6 py-4 rounded-xl text-center max-w-md">
-          <span className="material-symbols-outlined text-3xl mb-2 block">error</span>
+          <span className="material-symbols-outlined text-3xl mb-2 block">
+            error
+          </span>
           <p className="font-semibold mb-1">Error al cargar el panel</p>
           <p className="text-sm">{fetchError}</p>
         </div>
