@@ -39,6 +39,9 @@ const requireAdminIfUnfiltered = (req, res, next) => {
 // Importar manejador asíncrono para manejo de errores
 const { asyncHandler } = require("../middlewares/dbErrorHandler");
 
+// Importar utilidades de correo
+const { enviarConfirmacionReservacion } = require("../utils/email");
+
 /**
  * POST /api/reservaciones
  *
@@ -169,6 +172,34 @@ router.post(
       // Confirmar transacción
       await connection.commit();
       connection.release();
+
+      // Enviar correo de confirmación (async, no bloquea la respuesta)
+      // Obtenemos datos del usuario y cancha para el correo
+      const usuarioSql = `SELECT u.nombre, u.email, c.nombre as nombreCancha 
+        FROM USUARIOS u 
+        JOIN RESERVACIONES r ON r.USUARIOS_idUsuario = u.idUsuario 
+        JOIN CANCHAS c ON r.CANCHAS_idCancha = c.idCancha 
+        WHERE r.idReservacion = ?`;
+
+      const [usuarioData] = await pool.query(usuarioSql, [result.insertId]);
+
+      if (
+        usuarioData.length > 0 &&
+        usuarioData[0].email &&
+        process.env.RESEND_API_KEY
+      ) {
+        const usuario = usuarioData[0];
+        // Enviar correo sin esperar (fire and forget)
+        enviarConfirmacionReservacion(usuario.email, usuario.nombre, {
+          fecha,
+          hora_inicio,
+          hora_fin,
+          cancha: usuario.nombreCancha,
+          monto,
+        }).catch((err) =>
+          console.error("[Email] Error secundario:", err.message),
+        );
+      }
 
       // Retornar respuesta de éxito
       res.status(201).json({
