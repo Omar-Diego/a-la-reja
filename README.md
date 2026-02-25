@@ -1,7 +1,5 @@
 # 🏟️ A La Reja - Sistema de Reservación de Canchas de Pádel
 
-> **⚠️ Nota Importante:** La mayoría de la aplicación ya cuenta con funcionalidad completa, incluyendo gestión de usuarios, reservación de canchas, autenticación segura, historial de reservas y más. Sin embargo, **los pagos en línea aún no están implementados**. Las reservaciones se confirman pero el procesamiento de pagos está pendiente de desarrollo.
-
 <div align="center">
 
 [![🚀 Ver Aplicación en Producción](https://img.shields.io/badge/🚀-Ver_Aplicación_en_Producción-10b981?style=for-the-badge&logo=rocket)](https://a-la-reja.vercel.app/)
@@ -22,8 +20,7 @@
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-4-38B2AC?style=for-the-badge&logo=tailwind-css)
 ![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker)
 
-**Estado del Proyecto:** 🚀 En Producción  
-**Versión:** 0.1.0
+**Estado del Proyecto:** 🚀 En Producción
 
 </div>
 
@@ -40,6 +37,33 @@ El sistema está construido con una arquitectura **full-stack** que incluye:
 - **Base de Datos:** MySQL 8.0 con pool de conexiones
 - **Autenticación:** NextAuth.js v5 (Auth.js) + JWT
 - **Despliegue:** Docker Compose para backend + Vercel para frontend
+
+### 🔄 Flujo de Creación de Reservaciones
+
+El siguiente diagrama ilustra el proceso completo de creación de una reservación, incluyendo autenticación, validación y prevención de conflictos mediante bloqueo de filas:
+
+```mermaid
+flowchart TD
+    A[POST /api/reservaciones<br/>fecha, hora_inicio, hora_fin, idCancha] --> B[auth.js middleware<br/>jwt.verify token, JWT_SECRET]
+    B --> C[Input validation<br/>dateRegex, timeRegex checks]
+    C --> D[pool.getConnection]
+    D --> E[connection.beginTransaction]
+    E --> F[SELECT ... FOR UPDATE<br/>Lock overlapping rows]
+    F --> G{Overlapping found?}
+    G -->|Sí| H[ROLLBACK<br/>Return 409 Conflict]
+    G -->|No| I[INSERT INTO reservaciones<br/>fecha, hora_inicio, hora_fin, idUsuario, idCancha, monto]
+    I --> J[COMMIT transaction]
+    J --> K[Return 201 Created<br/>reservación creada]
+    H --> L[Error: Horario no disponible]
+```
+
+Este flujo garantiza la integridad de las reservaciones mediante:
+
+- ✅ **Autenticación JWT** para verificar la identidad del usuario
+- ✅ **Validación de entrada** con expresiones regulares para fechas y horas
+- ✅ **Transacciones de base de datos** para operaciones atómicas
+- ✅ **Bloqueo pesimista (FOR UPDATE)** para prevenir condiciones de carrera
+- ✅ **Manejo de conflictos** con rollback automático en caso de solapamiento
 
 ---
 
