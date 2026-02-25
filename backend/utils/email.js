@@ -12,7 +12,9 @@ const { Resend } = require("resend");
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Email desde el cual se envían los correos
-// Por defecto usa el dominio gratuito de Resend, puede cambiarse a dominio propio
+// IMPORTANTE: El dominio debe estar verificado en Resend para enviar correos
+// Si usas un dominio personalizado, verifícalo en https://resend.com/domains
+// Si no está verificado, usa el dominio gratuito de Resend: onresend.dev
 const FROM_EMAIL = process.env.FROM_EMAIL || "onresend.dev";
 
 /**
@@ -140,6 +142,23 @@ async function enviarConfirmacionReservacion(
       `[Email] ✗ Error al enviar correo a ${email}:`,
       error.message,
     );
+    console.error(`[Email] Código de error:`, error.code || "Desconocido");
+    console.error(`[Email] FROM_EMAIL usado:`, FROM_EMAIL);
+
+    // Si es error de dominio no verificado, sugerir solución
+    if (
+      error.message.includes("domain") ||
+      error.message.includes("verify") ||
+      error.message.includes("not verified")
+    ) {
+      console.error(
+        `[Email] ⚠️  El dominio ${FROM_EMAIL.split("@")[1]} puede no estar verificado en Resend.`,
+      );
+      console.error(
+        `[Email] 📧 Verifica el dominio en https://resend.com/domains o usa onresend.dev`,
+      );
+    }
+
     console.error(`[Email] Error completo:`, error);
     // No lanzamos el error para no afectar la creación de la reservación
     // El correo es secundário - la reservación ya está creada

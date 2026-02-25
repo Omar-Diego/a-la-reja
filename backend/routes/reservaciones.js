@@ -189,6 +189,9 @@ router.post(
         process.env.RESEND_API_KEY
       ) {
         const usuario = usuarioData[0];
+        console.log(
+          `[Email] Enviando confirmación a ${usuario.email} para reservación ${result.insertId}`,
+        );
         // Enviar correo sin esperar (fire and forget)
         enviarConfirmacionReservacion(usuario.email, usuario.nombre, {
           fecha,
@@ -196,8 +199,16 @@ router.post(
           hora_fin,
           cancha: usuario.nombreCancha,
           monto,
-        }).catch((err) =>
-          console.error("[Email] Error secundario:", err.message),
+        }).catch((err) => {
+          console.error(
+            `[Email] Error enviando correo a ${usuario.email}:`,
+            err.message,
+          );
+          console.error(`[Email] Stack trace:`, err.stack);
+        });
+      } else {
+        console.log(
+          `[Email] No se enviará correo - usuarioData: ${usuarioData.length}, email: ${usuarioData[0]?.email}, API_KEY: ${!!process.env.RESEND_API_KEY}`,
         );
       }
 

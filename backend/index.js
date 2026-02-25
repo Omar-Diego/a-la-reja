@@ -23,6 +23,9 @@ const dbErrorHandler = require("./middlewares/dbErrorHandler");
 // Inicializar aplicación Express
 const app = express();
 
+// Configurar trust proxy para entornos de producción (necesario para rate limiting detrás de proxy)
+app.set("trust proxy", 1);
+
 // Obtener puerto desde el entorno o usar 3000 por defecto
 const PORT = process.env.PORT || 3000;
 

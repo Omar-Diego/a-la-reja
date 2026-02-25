@@ -58,6 +58,8 @@ services:
       DB_NAME: ${DB_NAME:?DB_NAME_is_required}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET_is_required}
       FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL_is_required}
+      RESEND_API_KEY: ${RESEND_API_KEY:?RESEND_API_KEY_is_required}
+      FROM_EMAIL: ${FROM_EMAIL:?FROM_EMAIL_is_required}
       DB_SSL: "false"
     ports:
       - "3001:3001"
