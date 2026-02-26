@@ -51,6 +51,8 @@
 - [Despliegue y Configuración](docs/Deployment&Configuration.md)
   - [Configuración de Docker](docs/DockerSetup.md)
   - [Variables de Entorno y Configuración](docs/EnvironmentVariables&Configuration.md)
+- [Pruebas](docs/Testing.md)
+
 
 ## Descripción General
 
