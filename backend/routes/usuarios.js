@@ -199,6 +199,17 @@ router.post(
       });
     }
 
+    //Verificar si el email ya está registrado
+    const [existing] = await pool.query("SELECT idUsuario FROM USUARIOS WHERE email = ?", [
+      email,
+    ]);
+
+    if (existing.length > 0) {
+      return res.status(409).json({
+        error: "El email ya está registrado",
+      });
+    }
+
     // Hashear contraseña usando bcrypt con 10 rondas de salt
     // Más rondas = más seguro pero más lento
     const hashedPassword = await bcrypt.hash(password, 10);
